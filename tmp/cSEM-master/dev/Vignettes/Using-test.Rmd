@@ -1,0 +1,370 @@
+---
+title: "Postestimation: Testing a model"
+subtitle: "Using the `test_*()` family of functions"
+date: "Last edited: `r Sys.Date()`"
+output:
+  prettydoc::html_pretty:
+    theme: cayman
+    highlight: github
+    toc: true
+vignette: >
+  %\VignetteIndexEntry{using-test}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+bibliography: ../inst/REFERENCES.bib
+---
+WARNING: this document is work in progress.
+
+# Introduction {#introduction}
+
+The family of test function includes the following tests:
+- `testOMF`: test for overall model fit
+- `testMGD`: test for multigroup differences
+- `testHausman2`: Hausman test for endogeneity
+- `testMICOM`: test for measurement invariance of composites 
+
+# Test for overall model fit (`testOMF`)
+The test for overall model fit is used to test whether the specified model fits the
+dataset. In general, a bootstrap-based test suggested by @Beran1985 is employed. 
+In the context of PLS-PM, this test was introduced by @Dijkstra2015. 
+
+## Syntax & Options {#syntaxOMF}
+
+```{r eval=FALSE}
+testOMF(
+  .object                = args_default()$.object, 
+  .alpha                 = args_default()$.alpha, 
+  .handle_inadmissibles  = args_default()$.handle_inadmissibles, 
+  .R                     = args_default()$.R, 
+  .saturated             = args_default()$.saturated,
+  .seed                  = args_default()$.seed,
+  .verbose               = args_default()$.verbose
+  )
+```
+
+`.object`
+
+:   An object of class `cSEMResults` resulting from a call to `csem()`.
+   
+`.alpha`
+
+:  	An integer or a numeric vector of significance levels. Defaults to `0.05`.
+
+  
+`.handle_inadmissibles`
+
+:   Character string. How should inadmissible results be treated during 
+    bootstrap/permutation? One of "drop", "ignore", or "replace". 
+    If "drop", inadmissibles estimations are dropped (i.e., the number of 
+    results returned will be likely less than .R). For "ignore" inadmissible estimations are 
+    returned even if they are inadmissible (i.e., number of results
+    returned = .R). For "replace" inadmissible estimations are replaced, i.e.,
+    resampling continues until there are exactly .R admissible solutions 
+    (i.e., number of results returned equal .R). Defaults to "drop".
+
+`.R`
+
+:   Integer. The number of bootstrap runs. Defaults to `499`.
+
+
+`.saturated`
+
+:   Logical. Whether the model-implied indicator variance-covariance matrix 
+    should be based on the a saturated structural model. Defaults to `FALSE` 
+
+`.seed`
+
+:   Integer or `NULL`. The random seed to use. Defaults to `NULL` in which case
+    an arbitrary seed is choosen.
+
+    
+`.verbose`
+
+:
+
+
+### Details
+
+Details if there are any.
+
+## Usage & Examples {#examplesOMF}
+
+### Example 1 {#example1OMF}
+### Example 2 {#example2OMF}
+### Example 3 {#example3OMF}
+
+## Methods & Formulae {#methodsOMF}
+
+### Definition
+
+### Formula
+
+### Implementation
+
+### See also
+
+
+# Test for multi-group differences (`testMGD`)
+The test for multigroup differences is generally used to compare groups. In doing so, various 
+suggested test are implemented:
+- Approach suggested by @Chin2010 to compare a single parameter between two groups. 
+- Approach suggested by @Sarstedt2011 to compare a single parameter across several groups.
+- Approach suggested by @Klesel2019 to compare the model-implied indicator/construct correlation matrix 
+across several groups.
+## Syntax & Options {#syntaxMGD}
+```{r eval=FALSE}
+testMGD(
+  .object                = args_default()$.object,
+  .alpha                 = args_default()$.alpha,
+  .approach_p_adjust     = args_default()$.approach_p_adjust,
+  .approach_mgd          = args_default()$.approach_mgd,
+  .model                 = args_default()$.model,
+  .handle_inadmissibles  = args_default()$.handle_inadmissibles,
+  .R_permutation         = args_default()$.R_permutation,
+  .R_bootstrap           = args_default()$.R_bootstrap,
+  .saturated             = args_default()$.saturated,
+  .seed                  = args_default()$.seed,
+  .type_vcv              = args_default()$.type_vcv,
+  .verbose               = args_default()$.verbose
+  ) 
+```
+
+`.object`
+
+:   An object of class `cSEMResults_multi` resulting from a call to `csem()`.
+   
+`.alpha`
+
+:  	An integer or a numeric vector of significance levels. Defaults to `0.05`.
+
+`.approach_p_adjust`
+
+:  	Character string. Approach used for the correction of the p-value in case of 
+    multiple comparisons. One of "holm", "hochberg", "hommel", "bonferroni", "BH", "BY",
+   "fdr", and "none". Defaults to "none".
+  
+`.approach_mgd`
+
+:  	Character string. Approach used for multi-group comparison. One of "Chin", "Sarstedt",
+    and "Klesel". Defaults to "none".
+
+`.model`
+
+:   A model in lavaan model syntax or `NULL`. The specified model determines which parameters 
+    are compared across groups. If set to `NULL` all model parameters are comapred across groups.
+    Defaults to `NULL`. 
+
+`.handle_inadmissibles`
+
+:   Character string. How should inadmissible results be treated during 
+    bootstrap/permutation? One of "drop", "ignore", or "replace". 
+    If "drop", inadmissibles estimations are dropped (i.e., the number of 
+    results returned will be likely less than .R). For "ignore" inadmissible estimations are 
+    returned even if they are inadmissible (i.e., number of results
+    returned = .R). For "replace" inadmissible estimations are replaced, i.e.,
+    resampling continues until there are exactly .R admissible solutions 
+    (i.e., number of results returned equal .R). Defaults to "drop".
+
+`.R_permutation`
+
+:   Integer. The number of permutation runs. Defaults to `499`.
+
+`.R_bootstrap`
+
+:   Integer. The number of bootstrap runs. Defaults to `499`.
+
+`.saturated`
+
+:   Logical. Whether the model-implied indicator variance-covariance matrix 
+    should be based on a saturated structural model. Defaults to `FALSE` 
+
+`.seed`
+
+:   Integer or `NULL`. The random seed to use. Defaults to `NULL` in which case
+    an arbitrary seed is choosen.
+
+`.type_vcv`
+
+:   Character string. Indicates which model-implied correlation matrix is compared
+    across groups. One of "*indicator*" or "*construct*". Defaults to "*indicator*".
+    
+`.verbose`
+
+:
+
+### Details
+
+Details if there are any.
+
+## Usage & Examples {#examplesMGD}
+
+### Example 1 {#example1MGD}
+### Example 2 {#example2MGD}
+### Example 3 {#example3MGD}
+
+## Methods & Formulae {#methodsMGD}
+
+### Definition
+
+### Formula
+
+### Implementation
+
+### See also
+
+# Hausman test for endogeneity (`testHausman2`)
+
+## Syntax & Options {#syntaxHausman}
+```{r eval=FALSE}
+testHausman2(
+ .object               = NULL,
+ .alpha                = args_default()$.alpha,
+ .eval_plan            = args_default()$.eval_plan,
+ .handle_inadmissibles = args_default()$.handle_inadmissibles,
+ .R                    = args_default()$.R,
+ .resample_method      = args_default()$.resample_method,
+ .seed                 = args_default()$.seed
+)
+```
+
+
+`.object`
+
+:   An object of class `cSEMResults` resulting from a call to `csem()`.
+   
+`.alpha`
+
+:  	An integer or a numeric vector of significance levels. Defaults to `0.05`.
+
+
+`.eval_plan`
+
+:   Character string. The evaluation plan to use. One of "sequential" or 
+    "multiprocess". In the latter case all available cores will be used. 
+Defaults to "sequential". See `resamplecSEMResults()` for details.
+   
+`.handle_inadmissibles`
+
+:   Character string. How should inadmissible results be treated during 
+    bootstrap/permutation? One of "drop", "ignore", or "replace". 
+    If "drop", inadmissibles estimations are dropped (i.e., the number of 
+    results returned will be likely less than .R). For "ignore" inadmissible estimations are 
+    returned even if they are inadmissible (i.e., number of results
+    returned = .R). For "replace" inadmissible estimations are replaced, i.e.,
+    resampling continues until there are exactly .R admissible solutions 
+    (i.e., number of results returned equal .R). Defaults to "drop".
+
+`.R`
+
+:   Integer. The number of bootstrap/permutation runs. Defaults to `499`.
+
+`.resample_method`
+
+:   Character string. The resampling method to use. One of: "bootstrap" or "jackknife". 
+    Defaults to "bootstrap".
+
+
+`.seed`
+
+:   Integer or `NULL`. The random seed to use. Defaults to `NULL` in which case
+    an arbitrary seed is choosen.
+
+### Details
+
+Details if there are any.
+
+## Usage & Examples {#examplesHausman}
+
+### Example 1 {#example1Hausman}
+### Example 2 {#example2Hausman}
+### Example 3 {#example3Hausman}
+
+## Methods & Formulae {#methodsHausman}
+
+### Definition
+
+### Formula
+
+### Implementation
+
+### See also
+
+# Test for measurement invariance of composites (`testMICOM`)
+
+The test for measurement invariance of composites suggested by @Henseler2016 is used to 
+test measurement of composites across groups.
+
+## Syntax & Options {#syntaxMICOM}
+
+```{r eval=FALSE}
+testMICOM(
+  .object               = args_default()$.object,
+  .alpha                = args_default()$.alpha,
+  .approach_p_adjust    = args_default()$.approach_p_adjust, 
+  .handle_inadmissibles = args_default()$.handle_inadmissibles,
+  .R                    = args_default()$.R,
+  .seed                 = args_default()$.seed,
+  .verbose              = args_default()$.verbose
+  )
+```
+
+`.object`
+
+:   An object of class `cSEMResults` resulting from a call to `csem()`.
+   
+`.alpha`
+
+:  	An integer or a numeric vector of significance levels. Defaults to `0.05`.
+
+`.approach_p_adjust`
+
+:  	Character string. Approach used for the correction of the p-value in case of 
+    multiple comparisons. One of "holm", "hochberg", "hommel", "bonferroni", "BH", "BY",
+   "fdr", and "none". Defaults to "none".
+
+`.handle_inadmissibles`
+
+:   Character string. How should inadmissible results be treated during 
+    bootstrap/permutation? One of "drop", "ignore", or "replace". 
+    If "drop", inadmissibles estimations are dropped (i.e., the number of 
+    results returned will be likely less than .R). For "ignore" inadmissible estimations are 
+    returned even if they are inadmissible (i.e., number of results
+    returned = .R). For "replace" inadmissible estimations are replaced, i.e.,
+    resampling continues until there are exactly .R admissible solutions 
+    (i.e., number of results returned equal .R). Defaults to "drop".
+
+`.R`
+
+:   Integer. The number of bootstrap/permutation runs. Defaults to `499`.
+
+
+`.seed`
+
+:   Integer or `NULL`. The random seed to use. Defaults to `NULL` in which case
+    an arbitrary seed is choosen.
+
+
+`.verbose`
+
+:   
+### Details
+
+Details if there are any.
+
+## Usage & Examples {#examplesMICOM}
+
+### Example 1 {#example1MICOM}
+### Example 2 {#example2MICOM}
+### Example 3 {#example3MICOM}
+
+## Methods & Formulae {#methodsMICOM}
+
+### Definition
+
+### Formula
+
+### Implementation
+
+### See also
+
+# Literature
