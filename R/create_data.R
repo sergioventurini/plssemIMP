@@ -1,6 +1,60 @@
-create_data <- function(beta = 1, sigma2 = 1, n = 50, run = 1) {
+create_data <- function(n = 50, run = 1, method = "norm", pkg = NULL, args = list()) {
   set.seed(seed = run)
-  x <- rnorm(n)
-  y <- beta * x + rnorm(n, sd = sqrt(sigma2))
-  cbind(x = x, y = y)
+  
+  if (method == "reg") {
+    beta <- args$beta
+    sigma2 <- args$sigma2
+    p <- length(beta)
+    x <- rnorm(n)
+    y <- list()
+    for (j in 1:p) {
+      y[[j]] <- beta[j]*x + rnorm(n, sd = sqrt(sigma2[j]))
+    }
+    data <- cbind(x = x, y = y)
+    cn <- c("x", paste("y", 1:p))
+  }
+  else if (method == "norm") {
+    mean <- args$mean
+    sigma <- args$sigma
+    p <- length(mean)
+    data <- mvtnorm::rmvnorm(n = n, mean = mean, sigma = sigma)
+    cn <- paste0("y", 1:p)
+  }
+  else if (method == "vm") {
+    mean <- args$mean
+    sigma <- args$sigma
+    skew <- args$skew
+    kurt <- args$kurt
+    p <- length(mean)
+    data <- SimDesign::rValeMaurelli(n = n, mean = mean, sigma = sigma, skew = skew, kurt = kurt)
+    cn <- paste0("y", 1:p)
+  }
+  else if (method == "model") {
+    model <- args$model
+    if (pkg == "cSEM.DGP") {
+      skew <- args$skew
+      kurt <- args$kurt
+      data <- cSEM.DGP::generateData(.model = model, .N = n, .skewness = skew,
+        .kurtosis = kurt)
+    }
+    else if (pkg == "simstandard") {
+      data <- simstandard::sim_standardized(m = model, n = n,
+        observed = TRUE, latent = FALSE, errors = FALSE,
+        factor_scores = FALSE, composites = FALSE, matrices = FALSE)
+    }
+    if (!is.null(args$cn)) {
+      cn <- args$cn
+    }
+    else {
+      p <- ncol(data)
+      cn <- paste0("y", 1:p)
+    }
+  }
+  else {
+    stop("the specified method is not implemented.")
+  }
+
+  data <- as.data.frame(data)
+  colnames(data) <- cn
+  data
 }

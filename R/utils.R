@@ -91,3 +91,69 @@ aggregate_sum_df <- function(x, by) {
   for (i in seq_along(z)) y[[len + i]] <- z[[i]]
   y
 }
+
+is_square_matrix <- function(x) {
+  if (!is.matrix(x)) 
+    stop("argument x is not a matrix")
+  return(nrow(x) == ncol(x))
+}
+
+is_symmetric_matrix <- function(x) {
+  if (!is.matrix(x)) {
+    stop("argument x is not a matrix")
+  }
+  if (!is.numeric(x)) {
+    stop("argument x is not a numeric matrix")
+  }
+  if (!is_square_matrix(x)) 
+    stop("argument x is not a square numeric matrix")
+  return(sum(x == t(x)) == (nrow(x)^2))
+}
+
+is_positive_definite <- function(x, tol = 1e-08) {
+  if (!is_square_matrix(x)) 
+    stop("argument x is not a square matrix")
+  if (!is_symmetric_matrix(x)) 
+    stop("argument x is not a symmetric matrix")
+  if (!is.numeric(x)) 
+    stop("argument x is not a numeric matrix")
+  eigenvalues <- eigen(x, only.values = TRUE)$values
+  n <- nrow(x)
+  for (i in 1:n) {
+    if (abs(eigenvalues[i]) < tol) {
+      eigenvalues[i] <- 0
+    }
+  }
+  if (any(eigenvalues <= 0)) {
+    return(FALSE)
+  }
+  return(TRUE)
+}
+
+combine_vcov <- function(vcov_path, vcov_load) {
+  P <- nrow(vcov_path)
+  Q <- nrow(vcov_load)
+  PQ <- P + Q
+  vcov_all <- matrix(0, nrow = PQ, ncol = PQ)
+  vcov_all[1:P, 1:P] <- vcov_path
+  vcov_all[(P + 1):PQ, (P + 1):PQ] <- vcov_load
+  if (!is_positive_definite(vcov_all))
+    stop("parameter estimates variance-covariance matrix not positive definite.")
+
+  vcov_all
+}
+
+rubin_parest <- function(parest_list) {
+  parest_mat <- do.call(rbind, parest_list)
+  colMeans(parest_mat)
+}
+
+rubin_vcov <- function(parest_list, vcov_list) {
+  parest_mat <- do.call(rbind, parest_list)
+  m <- nrow(parest_mat)
+  parest_bar <- colMeans(parest_mat)
+  deviations <- parest_mat - matrix(parest_bar, nrow = m, ncol = length(parest_bar), byrow = TRUE)
+  B_hat <- t(deviations) %*% deviations / (m - 1)
+  W_hat <- Reduce("+", vcov_list)/m
+  W_hat + (1 + 1/m)*B_hat
+}

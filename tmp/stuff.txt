@@ -1,0 +1,6 @@
+SimDesign::rValeMaurelli()
+semTools::mvrnonnorm()
+
+https://gabriellajg.github.io/EPSY-579-R-Cookbook-for-SEM/
+
+booststrap vs. multiple imputation --> see discussion in chatgpt
