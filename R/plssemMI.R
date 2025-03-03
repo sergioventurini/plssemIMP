@@ -1,17 +1,17 @@
 plssemMI <- function(model, data, ..., m = 5, miArgs = list(),
-                     miPackage = "mice", seed = 12345) {
+                     csemArgs = list(), miPackage = "mice", seed = 12345) {
   CALL <- match.call()
   dots <- list(...)
-  if (all(!is.null(dots$test),
-    tolower(dots$test) %in% c("boot", "bootstrap", "bollen.stine")) ||
-    all(!is.null(dots$se), tolower(dots$se) %in% c("boot", "bootstrap"))) {
-    stop("Bootstraping unavailable (and not recommended) in combination with ", 
-         "multiple imputations. For robust confidence intervals of indirect", 
-         " effects, see the ?semTools::monteCarloMed help page. To bootstrap ", 
-         "within each imputation, users can pass a custom function to the ", 
-         "FUN= argument (see ?lavaanList) to save bootstrap distributions in ", 
-         "the @funList slot, then manually combine afterward.")
-  }
+  # if (all(!is.null(dots$test),
+  #   tolower(dots$test) %in% c("boot", "bootstrap", "bollen.stine")) ||
+  #   all(!is.null(dots$se), tolower(dots$se) %in% c("boot", "bootstrap"))) {
+  #   stop("Bootstraping unavailable (and not recommended) in combination with ", 
+  #        "multiple imputations. For robust confidence intervals of indirect", 
+  #        " effects, see the ?semTools::monteCarloMed help page. To bootstrap ", 
+  #        "within each imputation, users can pass a custom function to the ", 
+  #        "FUN= argument (see ?lavaanList) to save bootstrap distributions in ", 
+  #        "the @funList slot, then manually combine afterward.")
+  # }
   if (!is.null(seed)) {
     seed <- as.integer(seed[1])
   }
@@ -80,7 +80,7 @@ plssemMI <- function(model, data, ..., m = 5, miArgs = list(),
   else stop("data is not a valid input type: a partially observed data.frame,", 
             " a list of imputed data.frames, or previous lavaan.mi object")
   lavListCall <- list(cSEM::csem, .model = model, .data = imputedData)
-  lavListCall <- c(lavListCall, dots)
+  lavListCall <- c(lavListCall, csemArgs)
   fit <- list()
   fit$FitList <- eval(as.call(lavListCall))
   fit$ParamList <- lapply(fit$FitList,
@@ -105,5 +105,18 @@ plssemMI <- function(model, data, ..., m = 5, miArgs = list(),
   if (!all(unlist(fit$convList))) 
     warning("the model did not converge for any imputed data sets.")
   fit$dots <- dots
+  fit$pooled <- poolMI(fit)
   fit
+}
+
+poolMI <- function(fitMI) {
+  parest_mi <- rubin_parest(fitMI$ParamList)
+  vcov_mi <- rubin_vcov(fitMI$ParamList, fitMI$VCOVList)
+  sd_mi <- sqrt(diag(vcov_mi))
+
+  idx <- which(parest_mi != 0)
+
+  out <- list(parest = parest_mi[idx], vcov = vcov_mi[idx, idx], sd = sd_mi[idx])
+
+  out
 }

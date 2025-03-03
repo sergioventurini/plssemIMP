@@ -1,4 +1,4 @@
-create_data <- function(n = 50, run = 1, method = "norm", pkg = NULL, args = list()) {
+create_data <- function(run = 1, n = 50, method = "norm", pkg = NULL, args = list()) {
   set.seed(seed = run)
   
   if (method == "reg") {
@@ -42,19 +42,15 @@ create_data <- function(n = 50, run = 1, method = "norm", pkg = NULL, args = lis
         observed = TRUE, latent = FALSE, errors = FALSE,
         factor_scores = FALSE, composites = FALSE, matrices = FALSE)
     }
-    if (!is.null(args$cn)) {
-      cn <- args$cn
-    }
-    else {
-      p <- ncol(data)
-      cn <- paste0("y", 1:p)
-    }
   }
   else {
     stop("the specified method is not implemented.")
   }
 
+  if (!is.null(args$cn)) {
+    colnames(data) <- args$cn
+  }
+
   data <- as.data.frame(data)
-  colnames(data) <- cn
   data
 }

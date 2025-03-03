@@ -145,6 +145,7 @@ combine_vcov <- function(vcov_path, vcov_load) {
 
 rubin_parest <- function(parest_list) {
   parest_mat <- do.call(rbind, parest_list)
+  
   colMeans(parest_mat)
 }
 
@@ -155,5 +156,18 @@ rubin_vcov <- function(parest_list, vcov_list) {
   deviations <- parest_mat - matrix(parest_bar, nrow = m, ncol = length(parest_bar), byrow = TRUE)
   B_hat <- t(deviations) %*% deviations / (m - 1)
   W_hat <- Reduce("+", vcov_list)/m
+  
   W_hat + (1 + 1/m)*B_hat
+}
+
+csem_combine <- function(csem_res) {
+  parest <- c(colSums(csem_res$Estimates$Path_estimates), colSums(csem_res$Estimates$Loading_estimates))
+  vcov <- cov(cbind(csem_res$Estimates$Estimates_resample$Estimates1$Path_estimates$Resampled, csem_res$Estimates$Estimates_resample$Estimates1$Loading_estimates$Resampled))
+  sd <- sqrt(diag(vcov))
+
+  idx <- which(parest != 0)
+
+  out <- list(parest = parest[idx], vcov = vcov, sd = sd)
+
+  out
 }

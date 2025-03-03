@@ -5,15 +5,15 @@ make_missing <- function(data, prop = 0.5, method = "ampute", mech = "MCAR", mis
   }
 
   res <- list()
-  res$orig <- data
 
   if (method == "ampute") {
     patterns <- missArgs$patterns
     freq <- missArgs$freq
     weights <- missArgs$weights
     type <- missArgs$type
-    data <- mice::ampute(data = data, prop = prop, patterns = patterns, freq = freq, mech = mech,
-      weights = weights, type = type)$amp
+    data_mat <- as.matrix(data)
+    data_amp <- mice::ampute(data = data_mat, prop = prop, patterns = patterns,
+      freq = freq, mech = mech, weights = weights, type = type)$amp
   }
   else if (method == "raw") {
     if (mech == "MCAR") {
@@ -21,7 +21,8 @@ make_missing <- function(data, prop = 0.5, method = "ampute", mech = "MCAR", mis
       p <- ncol(data)
       for (j in 1:p) {
         rx <- rbinom(n, 1, prop)
-        data[rx == 0, j] <- NA
+        data_amp <- data
+        data_amp[rx == 0, j] <- NA
       }
     }
   }
@@ -29,7 +30,8 @@ make_missing <- function(data, prop = 0.5, method = "ampute", mech = "MCAR", mis
     stop("the specified method is not implemented.")
   }
 
-  res$amputed <- data
+  res$orig <- data
+  res$amputed <- data_amp
 
   res
 }

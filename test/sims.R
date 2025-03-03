@@ -1,10 +1,4 @@
-# res <- run_sims(10)
-
-seed <- 1406
-
-## STEP 1: generate complete data
-
-n <- 1e4
+library(plssemMI)
 
 #  (1) multivariate normal data
 # mean <- rep(0, 9)
@@ -15,9 +9,7 @@ n <- 1e4
 # sigma[1:3, 1:3] <- sigma1
 # sigma[4:6, 4:6] <- sigma2
 # sigma[7:9, 7:9] <- sigma3
-# dat <- create_data(n = n, run = seed, method = "norm",
-#                    args = list(mean = mean, sigma = sigma))
-# pairs(dat)
+# argsCD <- list(mean = mean, sigma = sigma)
 
 #  (2) multivariate non-normal data (Vale-Maurelli approach)
 # mean <- rep(0, 9)
@@ -30,10 +22,8 @@ n <- 1e4
 # sigma[7:9, 7:9] <- sigma3
 # skew <- rep(c(1.5, 1.5, 0.5), 3)
 # kurt <- rep(c(3.75, 3.5, 0.5), 3)
-# dat <- create_data(n = n, run = seed, method = "vm",
-#                    args = list(mean = mean, sigma = sigma,
-#                                skew = skew, kurt = kurt))
-# pairs(dat)
+# argsCD <- list(mean = mean, sigma = sigma,
+#                skew = skew, kurt = kurt)
 
 # (3) using a specified SEM model through the simstandard package
 # model <- '
@@ -68,13 +58,7 @@ n <- 1e4
 # y42 ~~ 0.2*y43
 # '
 # 
-# dat <- create_data(n = n, run = seed, method = "model", pkg = "simstandard",
-#                    args = list(model = model,
-#                                cn = c("y11", "y12", "y13",
-#                                       "y21", "y22", "y23",
-#                                       "y31", "y32", "y33",
-#                                       "y41", "y42", "y43")))
-# pairs(dat)
+# argsCD <- list(model = model)
 
 # (4) using a specified SEM model through the cSEM.DGP package
 model <- '
@@ -89,69 +73,38 @@ eta3 =~ 0.7*y31 + 0.8*y32 + 0.7*y33
 eta4 =~ 0.7*y41 + 0.7*y42 + 0.6*y43
 '
 
-dat <- create_data(n = n, run = seed, method = "model", pkg = "cSEM.DGP",
-                   args = list(model = model,
-                               cn = c("y11", "y12", "y13",
-                                      "y21", "y22", "y23",
-                                      "y31", "y32", "y33",
-                                      "y41", "y42", "y43")))
-# pairs(dat)
+## multiple imputation analysis
+res <- run_sims(runs = 50,
+                argsCD = list(n = 5e2, method = "model", pkg = "cSEM.DGP",
+                              model = model),
+                argsMM = list(prop = .5, mech = "MCAR", method = "ampute"),
+                argsMI = list(m = 5, methods = c("pmm", "norm"), pkg = "mice"),
+                argscSEM = list(.disattenuate = TRUE,
+                                .R = 100,
+                                .tolerance = 1e-07,
+                                .resample_method = "bootstrap",
+                                .handle_inadmissibles = "replace"))
 
-## STEP 2: generate missing data (using the ampute() function from the mice package)
-
-dat <- make_missing(dat, prop = .5)
-dat_orig <- dat$orig
-dat <- dat$amputed
-# sapply(dat, function(x) sum(is.na(x)))
-# sum(complete.cases(dat)) # or nrow(na.omit(dat))
-# pairs(dat)
-
-## STEP 3: perform multiple imputation
-res <- plssemMI(model = model, data = dat, m = 5, miArgs = list(),
-                miPackage = "mice", seed = seed,
-                # .approach_2ndorder            = "2stage", # c("2stage", "mixed"),
-                # .approach_cor_robust          = "none", # c("none", "mcd", "spearman"),
-                # .approach_nl                  = "sequential", # c("sequential", "replace"),
-                # .approach_paths               = "OLS",
-                # .approach_weights             = "PLS-PM",
-                # .conv_criterion               = "diff_absolute",
-                .disattenuate                 = TRUE,
-                # .dominant_indicators          = NULL,
-                # .estimate_structural          = TRUE,
-                # .id                           = NULL,
-                # .instruments                  = NULL,
-                # .iter_max                     = 100,
-                # .normality                    = FALSE,
-                # .PLS_approach_cf              = "dist_squared_euclid",
-                # .PLS_ignore_structural_model  = FALSE,
-                # .PLS_modes                    = NULL,
-                # .PLS_weight_scheme_inner      = "path",
-                # .reliabilities                = NULL,
-                # .starting_values              = NULL,
-                .resample_method              = "bootstrap", # c("none", "bootstrap", "jackknife"),
-                # .resample_method2             = "none",
-                .R                            = 99,
-                # .handle_inadmissibles         = "drop",
-                # .user_funs                    = NULL,
-                # .eval_plan                    = "sequential",
-                # .seed                         = NULL,
-                # .sign_change_option           = "none",
-                .tolerance                    = 1e-07)
-
-## STEP 4: apply Rubin's combination rule
-parest_mi <- rubin_parest(res$ParamList)
-vcov_mi <- rubin_vcov(res$ParamList, res$VCOVList)
-sd_mi <- sqrt(diag(vcov_mi))
-
-## STEP 5: analysis on original complete data
-opts <- res$FitList$Data_1$Information$Arguments
-opts$.data <- opts$.model <- NULL
-opts$.resample_method <- "bootstrap"
-opts$.R <- 99
+## analysis on original complete data
+opts <- list(.disattenuate = TRUE,
+             .R = 100,
+             .tolerance = 1e-07,
+             .resample_method = "bootstrap",
+             .handle_inadmissibles = "replace")
+dat_orig <- res[[1]]$dat_orig
 res_orig_call <- list(cSEM::csem, .model = model, .data = dat_orig)
 res_orig_call <- c(res_orig_call, opts)
 res_orig <- eval(as.call(res_orig_call))
-colSums(res_orig$Estimates$Path_estimates)
-colSums(res_orig$Estimates$Loading_estimates)
-sqrt(diag(cov(res_orig$Estimates$Estimates_resample$Estimates1$Path_estimates$Resampled)))
-sqrt(diag(cov(res_orig$Estimates$Estimates_resample$Estimates1$Loading_estimates$Resampled)))
+res_orig <- csem_combine(res_orig)
+
+## complete-case (listwise deletion) analysis
+opts <- list(.disattenuate = TRUE,
+             .R = 100,
+             .tolerance = 1e-07,
+             .resample_method = "bootstrap",
+             .handle_inadmissibles = "replace")
+dat_miss <- na.omit(res[[1]]$dat_miss)
+res_miss_call <- list(cSEM::csem, .model = model, .data = dat_miss)
+res_miss_call <- c(res_miss_call, opts)
+res_miss <- eval(as.call(res_miss_call))
+res_miss <- csem_combine(res_miss)
