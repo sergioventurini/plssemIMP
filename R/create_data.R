@@ -45,6 +45,9 @@ create_data <- function(n = 50, method = "norm", pkg = NULL, args = list(),
         observed = TRUE, latent = FALSE, errors = FALSE,
         factor_scores = FALSE, composites = FALSE, matrices = FALSE)
     }
+    else {
+      stop("the specified data generation package is not available.")
+    }
   }
   else {
     stop("the specified data creation method is not available.")

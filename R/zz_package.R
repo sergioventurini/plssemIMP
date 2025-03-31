@@ -18,6 +18,7 @@
 #' @useDynLib plssemMI, .registration = TRUE
 #' @import stats
 #' @import utils
+#' @importFrom magrittr %>%
 #' 
 #' @keywords internal
 NULL

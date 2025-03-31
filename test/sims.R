@@ -60,7 +60,7 @@ library(tidyverse)
 # y42 ~~ 0.2*y43
 # '
 # 
-# argsCD <- list(model = model)
+# argsCD <- list(method = "model", pkg = "simstandard", model = model)
 
 # (4) using a specified SEM model through the cSEM.DGP package
 model <- '
@@ -74,7 +74,7 @@ eta2 =~ 0.7*y21 + 0.7*y22 + 0.9*y23
 eta3 =~ 0.7*y31 + 0.8*y32 + 0.7*y33
 eta4 =~ 0.7*y41 + 0.7*y42 + 0.6*y43
 '
-argsCD <- list(n = nsample, method = "model", pkg = "cSEM.DGP", model = model)
+argsCD <- list(method = "model", pkg = "cSEM.DGP", model = model)
 
 true_model <- cSEM::parseModel(model)
 true_path <- colSums(true_model$structural2)
@@ -89,6 +89,7 @@ nsample <- 1e3
 nimp <- 5
 nboot <- 200
 conflev <- 0.95
+argsCD <- c(argsCD, n = nsample)
 argscSEM <- list(.disattenuate = TRUE,
                  .R = nboot,
                  .tolerance = 1e-07,
@@ -113,28 +114,5 @@ res_df <- aggregate_results(res, true_coefs = true_coefs,
                             methods = c("pmm", "listwise", "fulloriginal"),
                             qual_meas = c("PB", "CR"))
 
-## represent the results graphically
-res_path_est <- extract_results(res, approach = "pmm", type = "path", what = "est")
-res_load_est <- extract_results(res, approach = "pmm", type = "load", what = "est")
-mi_est <- rbind(res_path_est, res_load_est)
-mi_est <- data.frame(param = rownames(mi_est), mi_est, true_coef)
-df_long <- mi_est %>%
-  pivot_longer(cols = starts_with("run_"),
-               names_to = "simulation",
-               values_to = "estimate")
-
-constants <- data.frame(param = rownames(mi_est), true_coefs = true_coefs)
-constants <- constants %>%
-  mutate(x = as.numeric(factor(param)))
-
-ggplot(df_long, aes(x = param, y = estimate, fill = param)) +
-  geom_boxplot(alpha = 0.7) +
-  geom_segment(data = constants,
-               aes(x = x - 0.4, xend = x + 0.4,
-                   y = true_coefs, yend = true_coefs),
-               linewidth = 2, linetype = "solid",
-               alpha = 0.4) +
-  theme_minimal() +
-  labs(title = "Boxplot of MI estimates by parameter",
-       x = "parameter",
-       y = "estimate")
+## plot the results
+plot_results(res, true_coefs = true_coefs, methods = "pmm", values = c("est", "sd"))
