@@ -1,9 +1,4 @@
-make_missing <- function(data, prop = 0.5, method = "ampute", mech = "MCAR", missArgs = list(),
-  seed = NULL) {
-  if (!is.null(seed)) {
-    set.seed(seed = seed)
-  }
-
+make_missing <- function(data, prop = 0.5, method = "ampute", mech = "MCAR", missArgs = list()) {
   res <- list()
 
   if (method == "ampute") {
@@ -25,9 +20,15 @@ make_missing <- function(data, prop = 0.5, method = "ampute", mech = "MCAR", mis
         data_amp[rx == 0, j] <- NA
       }
     }
+    else if (mech == "MAR") {
+      # [[TODO]]
+    }
+    else {
+      stop("the specified missing mechanism is not available.")
+    }
   }
   else {
-    stop("the specified method is not implemented.")
+    stop("the specified missing generation method is not available.")
   }
 
   res$orig <- data

@@ -138,36 +138,224 @@ combine_vcov <- function(vcov_path, vcov_load) {
   vcov_all[1:P, 1:P] <- vcov_path
   vcov_all[(P + 1):PQ, (P + 1):PQ] <- vcov_load
   if (!is_positive_definite(vcov_all))
-    stop("parameter estimates variance-covariance matrix not positive definite.")
+    stop("variance-covariance matrix not positive definite.")
 
   vcov_all
 }
 
-rubin_parest <- function(parest_list) {
-  parest_mat <- do.call(rbind, parest_list)
+rubin_est <- function(est_list) {
+  est_mat <- do.call(rbind, est_list)
   
-  colMeans(parest_mat)
+  colMeans(est_mat)
 }
 
-rubin_vcov <- function(parest_list, vcov_list) {
-  parest_mat <- do.call(rbind, parest_list)
-  m <- nrow(parest_mat)
-  parest_bar <- colMeans(parest_mat)
-  deviations <- parest_mat - matrix(parest_bar, nrow = m, ncol = length(parest_bar), byrow = TRUE)
+rubin_vcov <- function(est_list, vcov_list) {
+  est_mat <- do.call(rbind, est_list)
+  m <- nrow(est_mat)
+  est_bar <- colMeans(est_mat)
+  deviations <- est_mat - matrix(est_bar, nrow = m, ncol = length(est_bar), byrow = TRUE)
   B_hat <- t(deviations) %*% deviations / (m - 1)
   W_hat <- Reduce("+", vcov_list)/m
-  
-  W_hat + (1 + 1/m)*B_hat
+  T_hat <- W_hat + (1 + 1/m)*B_hat
+
+  list(T = T_hat, B = B_hat, W = W_hat)
 }
 
-csem_combine <- function(csem_res) {
-  parest <- c(colSums(csem_res$Estimates$Path_estimates), colSums(csem_res$Estimates$Loading_estimates))
-  vcov <- cov(cbind(csem_res$Estimates$Estimates_resample$Estimates1$Path_estimates$Resampled, csem_res$Estimates$Estimates_resample$Estimates1$Loading_estimates$Resampled))
-  sd <- sqrt(diag(vcov))
+barnard_rubin <- function(fitMI, what = "path") {
+  m <- length(fitMI$FitList)
+  if (what == "path") {
+    qbar <- rubin_est(fitMI$PathList)
+    qbar <- qbar[which(qbar != 0)]
+    vcov_mi <- rubin_vcov(fitMI$PathList, fitMI$PathVCOVList)
+    dfcom <- fitMI$nobs - length(qbar)
+  }
+  else if (what == "loading") {
+    qbar <- rubin_est(fitMI$LoadingList)
+    qbar <- qbar[which(qbar != 0)]
+    vcov_mi <- rubin_vcov(fitMI$LoadingList, fitMI$LoadingVCOVList)
+    dfcom <- fitMI$nobs - 1
+  }
+  ubar <- diag(vcov_mi$W)
+  b <- diag(vcov_mi$B)
+  t <- diag(vcov_mi$T)  # same as ubar + (1 + 1/m) * b
+  lambda <- (1 + 1 / m) * b / t
+  lambda[lambda < 1e-04] <- 1e-04
+  dfold <- (m - 1) / lambda^2
+  dfobs <- (dfcom + 1) / (dfcom + 3) * dfcom * (1 - lambda)
+  dfold * dfobs / (dfold + dfobs)
+}
 
-  idx <- which(parest != 0)
+poolMI <- function(fitMI, boot_mi, level = 0.95) {
+  if (boot_mi == "miboot") {
+    path_est <- rubin_est(fitMI$PathList)
+    idx <- which(path_est != 0)
+    path_est <- path_est[idx]
+    path_vcov <- rubin_vcov(fitMI$PathList, fitMI$PathVCOVList)$T
+    path_sd <- sqrt(diag(path_vcov))
+    df <- barnard_rubin(fitMI, what = "path")
+    tval <- stats::qt(1 - (1 - level)/2, df = df)
+    path_lwr <- path_est - tval*path_sd
+    path_upr <- path_est + tval*path_sd
 
-  out <- list(parest = parest[idx], vcov = vcov, sd = sd)
+    load_est <- rubin_est(fitMI$LoadingList)
+    idx <- which(load_est != 0)
+    load_est <- load_est[idx]
+    load_vcov <- rubin_vcov(fitMI$LoadingList, fitMI$LoadingVCOVList)$T
+    load_sd <- sqrt(diag(load_vcov))
+    df <- barnard_rubin(fitMI, what = "loading")
+    tval <- stats::qt(1 - (1 - level)/2, df = df)
+    load_lwr <- load_est - tval*load_sd
+    load_upr <- load_est + tval*load_sd
+  }
+  else if (boot_mi == "bootmi") {
+    npath <- sum(cSEM::parseModel(fitMI$model)$structural)
+    path <- fitMI$BootMatrix[, 1:npath]
+    load <- fitMI$BootMatrix[, (npath + 1):ncol(fitMI$BootMatrix)]
+    alpha <- (1 - level)
 
+    path_est <- colMeans(path)
+    path_vcov <- var(path)
+    path_sd <- sqrt(diag(path_vcov))
+    path_ci <- apply(path, 2, quantile, probs = c(alpha/2, 1 - alpha/2))
+    path_lwr <- path_ci[1, ]
+    path_upr <- path_ci[2, ]
+
+    load_est <- colMeans(load)
+    load_vcov <- var(load)
+    load_sd <- sqrt(diag(load_vcov))
+    load_ci <- apply(load, 2, quantile, probs = c(alpha/2, 1 - alpha/2))
+    load_lwr <- load_ci[1, ]
+    load_upr <- load_ci[2, ]
+  }
+  else if (boot_mi == "miboot_pooled") {
+    npath <- sum(cSEM::parseModel(fitMI$model)$structural)
+    path <- fitMI$PooledSample[, 1:npath]
+    load <- fitMI$PooledSample[, (npath + 1):ncol(fitMI$PooledSample)]
+    alpha <- (1 - level)
+
+    path_est <- colMeans(path)
+    path_vcov <- var(path)
+    path_sd <- sqrt(diag(path_vcov))
+    path_ci <- apply(path, 2, quantile, probs = c(alpha/2, 1 - alpha/2))
+    path_lwr <- path_ci[1, ]
+    path_upr <- path_ci[2, ]
+
+    load_est <- colMeans(load)
+    load_vcov <- var(load)
+    load_sd <- sqrt(diag(load_vcov))
+    load_ci <- apply(load, 2, quantile, probs = c(alpha/2, 1 - alpha/2))
+    load_lwr <- load_ci[1, ]
+    load_upr <- load_ci[2, ]
+  }
+  else if (boot_mi == "bootmi_pooled") {
+    npath <- sum(cSEM::parseModel(fitMI$model)$structural)
+    path <- fitMI$PooledSample[, 1:npath]
+    load <- fitMI$PooledSample[, (npath + 1):ncol(fitMI$PooledSample)]
+    alpha <- (1 - level)
+
+    path_est <- colMeans(path)
+    path_vcov <- var(path)
+    path_sd <- sqrt(diag(path_vcov))
+    path_ci <- apply(path, 2, quantile, probs = c(alpha/2, 1 - alpha/2))
+    path_lwr <- path_ci[1, ]
+    path_upr <- path_ci[2, ]
+
+    load_est <- colMeans(load)
+    load_vcov <- var(load)
+    load_sd <- sqrt(diag(load_vcov))
+    load_ci <- apply(load, 2, quantile, probs = c(alpha/2, 1 - alpha/2))
+    load_lwr <- load_ci[1, ]
+    load_upr <- load_ci[2, ]
+  }
+
+  out <- list(path_est = path_est, path_vcov = path_vcov, path_sd = path_sd,
+              path_lower = path_lwr, path_upper = path_upr,
+              load_est = load_est, load_vcov = load_vcov, load_sd = load_sd,
+              load_lower = load_lwr, load_upper = load_upr)
   out
+}
+
+csem_combine <- function(csem_res, level = 0.95) {
+  alpha <- 1 - level
+
+  path_est <- colSums(csem_res$Estimates$Path_estimates)
+  path_est <- path_est[which(path_est != 0)]
+  path_boot <- csem_res$Estimates$Estimates_resample$Estimates1$Path_estimates$Resampled
+  path_vcov <- cov(path_boot)
+  path_sd <- sqrt(diag(path_vcov))
+  path_ci <- apply(path_boot, 2, quantile, probs = c(alpha/2, 1 - alpha/2))
+  path_lwr <- path_ci[1, ]
+  path_upr <- path_ci[2, ]
+  
+  load_est <- colSums(csem_res$Estimates$Loading_estimates)
+  load_boot <- csem_res$Estimates$Estimates_resample$Estimates1$Loading_estimates$Resampled
+  load_vcov <- cov(load_boot)
+  load_sd <- sqrt(diag(load_vcov))
+  load_ci <- apply(load_boot, 2, quantile, probs = c(alpha/2, 1 - alpha/2))
+  load_lwr <- load_ci[1, ]
+  load_upr <- load_ci[2, ]
+
+  out <- list(path_est = path_est, path_vcov = path_vcov, path_sd = path_sd,
+              path_lower = path_lwr, path_upper = path_upr,
+              load_est = load_est, load_vcov = load_vcov, load_sd = load_sd,
+              load_lower = load_lwr, load_upper = load_upr)
+  out
+}
+
+pool_samples <- function(fitMI) {
+  pooled_sample <- cbind(fitMI$FitList[[1]]$Estimates$Estimates_resample$Estimates1$Path_estimates$Resampled,
+                         fitMI$FitList[[1]]$Estimates$Estimates_resample$Estimates1$Loading_estimates$Resampled)
+  for (i in 2:length(fitMI$FitList)) {
+    tmp <- cbind(fitMI$FitList[[i]]$Estimates$Estimates_resample$Estimates1$Path_estimates$Resampled,
+                 fitMI$FitList[[i]]$Estimates$Estimates_resample$Estimates1$Loading_estimates$Resampled)
+    pooled_sample <- rbind(pooled_sample, tmp)
+  }
+
+  pooled_sample
+}
+
+rawbias <- function(estimates, true) {
+  rowMeans(estimates) - true
+}
+
+percentbias <- function(estimates, true) {
+  100*rawbias(estimates, true)/true
+}
+
+coveragerate <- function(ciestimates, true) {
+  lower <- ciestimates[, , 1]
+  upper <- ciestimates[, , 2]
+  rowMeans(lower < true & true < upper)
+}
+
+averagewidth <- function(ciestimates) {
+  rowMeans(ciestimates[, , 2] - ciestimates[, , 1])
+}
+
+rmse <- function(estimates, true) {
+  sqrt(rowMeans((estimates - true)^2))
+}
+
+qualitymeasures <- function(estimates, true) {
+  data.frame(RB = rawbias(estimates, true),
+    PB = percentbias(estimates, true),
+    CR = coveragerate(estimates, true),
+    AW = averagewidth(estimates),
+    RMSE = rmse(estimates, true))
+}
+
+mode_function <- function(x, na.rm = TRUE) {
+  if (na.rm) {
+    ux <- unique(x[!is.na(x)])
+  }
+  else {
+    ux <- unique(x)
+  }
+  ux[which.max(tabulate(match(x, ux)))]
+}
+
+euclidean_dist <- function(X, idx) {
+  n <- nrow(X)
+  D <- sqrt(rowSums((X - matrix(1, n, 1) %*% as.matrix(X[idx, ]))^2, na.rm = TRUE))
+  D
 }

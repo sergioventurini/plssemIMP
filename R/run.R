@@ -1,43 +1,192 @@
-run_sims <- function(runs = 10, argsCD = list(n = 1e3, method = "model", pkg = "cSEM.DGP"),
+run_sims <- function(
+  runs = 10,
+  argsCD = list(n = 1e3, method = "model", pkg = "cSEM.DGP"),
   argsMM = list(prop = .5, mech = "MCAR", method = "ampute"),
   argsMI = list(m = 5, methods = c("pmm", "norm"), pkg = "mice"),
-  argscSEM = list()) {
+  argscSEM = list(),
+  argsBOOT = list(),
+  boot_mi = "miboot", # accepted values are 'miboot', 'bootmi', 'miboot_pooled', 'bootmi_pooled' and 'weighted_bootmi'
+  verbose = FALSE,
+  seed = NULL,
+  level = 0.95,
+  meanimp = TRUE,
+  knnimp = TRUE, argsKNN = list(k = 5, method = "euclidean"),
+  listwise = TRUE, fulloriginal = TRUE,
+  datalist = NULL) {
+
+  CALL <- match.call()
   nCD <- argsCD$n
   methodCD <- argsCD$method
   pkgCD <- argsCD$pkg
   modelCD <- argsCD$model
-  methodsMI <- argsMI$methods
   propMM <- argsMM$prop
   mechMM <- argsMM$mech
   methodMM <- argsMM$method
+  methodsMI <- argsMI$methods
   mMI <- argsMI$m
   pkgMI <- argsMI$pkg
+  modelMI <- argsMI$model
 
-  res_all <- res <- list()
+  if (!is.null(seed)) {
+    set.seed(seed = seed)
+  }
+  start_seed <- .Random.seed
+
+  if (!is.null(datalist)) {
+    if (length(datalist) < runs)
+      stop("the number of datasets provided is smaller than the number of runs.")
+  }
+
+  res_all <- res <- res_seeds <- list()
   for (run in 1:runs) {
-    cat(paste0("Simulation run ", run, " of ", runs, "\n"))
+    res_seeds[[run]] <- .Random.seed
+    if (verbose)
+      cat(paste0("Simulation run ", run, " of ", runs, "\n"))
+
     ## STEP 1: generate complete data
-    dat <- create_data(n = nCD, run = run, method = methodCD, pkg = pkgCD,
-                       args = list(model = modelCD))
+    if (is.null(datalist)) {
+      dat <- create_data(n = nCD, method = methodCD, pkg = pkgCD,
+                         args = list(model = modelCD))
+    }
+    else {
+      dat <- datalist[[run]]
+      if (any(is.na(dat)))
+        stop("the datasets provided must be complete.")
+    }
+    dat_orig <- dat
     
-    ## STEP 2: generate missing data (using the ampute() function from the mice package)
-    dat_miss <- make_missing(dat, prop = .5, mech = "MCAR", method = "ampute",
-      missArgs = argsMM[setdiff(names(argsMM), c("prop", "mech", "method"))],
-      seed = run)
-    dat_orig <- dat_miss$orig
+    ## STEP 2: generate missing data
+    dat_miss <- make_missing(dat, prop = propMM, mech = mechMM, method = methodMM,
+      missArgs = argsMM[setdiff(names(argsMM), c("prop", "mech", "method"))])
     dat <- as.data.frame(dat_miss$amputed)
     
-    ## STEP 3: perform multiple imputation
+    ## STEP 3: perform multiple imputation & bootstrap
     res <- list()
-    for (m in 1:length(methodsMI)) {
-      res[[m]] <- plssemMI(model = modelCD, data = dat, m = mMI, miArgs = list(method = methodsMI[m]),
-                           miPackage = pkgMI, seed = run, csemArgs = argscSEM)
+    for (methMI in methodsMI) {
+      if (verbose & length(methodsMI) > 1)
+        cat(paste0("  - multiple imputation package/method: ", pkgMI, "/", methMI, "\n"))
+      if (boot_mi == "miboot") {
+        if (is.null(argscSEM$.resample_method)) {
+          argscSEM <- c(argscSEM, .resample_method = "bootstrap")
+          warning("the .resample_method option has been set to 'bootstrap'.")
+        }
+        else if (argscSEM$.resample_method != "bootstrap") {
+          argscSEM$.resample_method <- "bootstrap"
+          warning("the .resample_method option has been set to 'bootstrap'.")
+        }
+        res[[methMI]] <- plssemMIBOOT(model = modelMI, data = dat, m = mMI,
+                                      miArgs = list(method = methMI),
+                                      miPackage = pkgMI, csemArgs = argscSEM,
+                                      verbose = verbose, seed = NULL, level = level)
+      }
+      else if (boot_mi == "bootmi") {
+        if (!is.null(argscSEM$.resample_method) & argscSEM$.resample_method != "none") {
+          argscSEM$.resample_method <- "none"
+          warning("the .resample_method option has been set to 'none'.")
+        }
+        res[[methMI]] <- plssemBOOTMI(model = modelMI, data = dat, m = mMI,
+                                      miArgs = list(method = methMI),
+                                      miPackage = pkgMI, csemArgs = argscSEM,
+                                      bootArgs = argsBOOT, verbose = verbose,
+                                      seed = NULL, level = level)
+      }
+      else if (boot_mi == "miboot_pooled") {
+        if (is.null(argscSEM$.resample_method)) {
+          argscSEM <- c(argscSEM, .resample_method = "bootstrap")
+          warning("the .resample_method option has been set to 'bootstrap'.")
+        }
+        else if (argscSEM$.resample_method != "bootstrap") {
+          argscSEM$.resample_method <- "bootstrap"
+          warning("the .resample_method option has been set to 'bootstrap'.")
+        }
+        res[[methMI]] <- plssemMIBOOT_PS(model = modelMI, data = dat, m = mMI,
+                                         miArgs = list(method = methMI),
+                                         miPackage = pkgMI, csemArgs = argscSEM,
+                                         verbose = verbose, seed = NULL, level = level)
+      }
+      else if (boot_mi == "bootmi_pooled") {
+        if (!is.null(argscSEM$.resample_method) & argscSEM$.resample_method != "none") {
+          argscSEM$.resample_method <- "none"
+          warning("the .resample_method option has been set to 'none'.")
+        }
+        res[[methMI]] <- plssemBOOTMI_PS(model = modelMI, data = dat, m = mMI,
+                                         miArgs = list(method = methMI),
+                                         miPackage = pkgMI, csemArgs = argscSEM,
+                                         bootArgs = argsBOOT, verbose = verbose,
+                                         seed = NULL, level = level)
+      }
+      else if (boot_mi == "weighted_bootmi") {
+        # [[TODO]]
+      }
+      else {
+        stop("the selected bootstrap/multiple imputation approach is not available.")
+      }
     }
-    names(res) <- methodsMI
+
+    ## STEP 4: perform single imputation
+    # mean imputation
+    if (meanimp) {
+      if (verbose)
+        cat("  - single imputation method: mean\n")
+      res[["mean"]] <- meanimp(data = dat, csemArgs = argscSEM,
+                               verbose = verbose, level = level)
+    }
+
+    # k-nearest neighbor imputation
+    if (knnimp) {
+      if (is.null(argsKNN$method))
+        argsKNN$method <- "euclidean"
+      if (is.null(argsKNN$k)) {
+        stop("specify at least on k value.")
+      }
+      else if (any(!is.numeric(argsKNN$k))) {
+        stop("k must contain numeric values.")
+      }
+      else if (any(floor(argsKNN$k) < 1)) {
+        stop("k must contain integer values greater than 0.")
+      }
+      argsKNN$k <- floor(argsKNN$k)
+      for (j in 1:length(argsKNN$k)) {
+        if (verbose)
+          cat(paste0("  - single imputation method: k-nearest neighbors (k = ", argsKNN$k[j], ")\n"))
+        res[[paste0("knn", argsKNN$k[j])]] <- knnimp(data = dat, csemArgs = argscSEM,
+                                                     k = argsKNN$k[j],
+                                                     method = argsKNN$method[1],
+                                                     verbose = verbose, level = level)
+      }
+    }
+
+    # perform complete-case (i.e. listwise deletion) analysis
+    if (listwise) {
+      if (verbose)
+        cat("  - complete-case (listwise deletion) analysis\n")
+      res[["listwise"]] <- fulldata(data = na.omit(dat), csemArgs = argscSEM,
+                                    verbose = verbose, level = level)
+    }
+
+    # perform analysis on original full data (i.e. before generating NAs)
+    if (fulloriginal) {
+      if (verbose)
+        cat("  - analysis on the original full data (i.e. before generating NAs)\n")
+      res[["fulloriginal"]] <- fulldata(data = dat_orig, csemArgs = argscSEM,
+                                        verbose = verbose, level = level)
+    }
+
+    methods_names <- methodsMI
+    if (meanimp) methods_names <- c(methods_names, "mean")
+    if (knnimp) methods_names <- c(methods_names, paste0("knn_", argsKNN$k))
+    if (fulloriginal) methods_names <- c(methods_names, "fulloriginal")
+    if (listwise) methods_names <- c(methods_names, "listwise")
+    names(res) <- methods_names
     res$dat_orig <- dat_orig
     res$dat_miss <- dat
     res_all[[run]] <- res
   }
+
+  names(res_all) <- paste0("run_", 1:runs)
+  res_all$start_seed <- start_seed
+  res_all$res_seeds <- res_seeds
+  res_all$call <- CALL
 
   res_all
 }

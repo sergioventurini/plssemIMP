@@ -1,0 +1,187 @@
+meanimp <- function(data, csemArgs = list(), verbose = FALSE, level = 0.95, ...) {
+  CALL <- match.call()
+  dots <- list(...)
+  imputedData <- NULL
+
+  if (missing(data)) {
+    stop("a dataset is needed to run the plssemMIBOOT() function.")
+  }
+
+  imputedData <- lapply(data, function(x) {
+    if (is.numeric(x)) {
+      x[is.na(x)] <- mean(x[!is.na(x)])
+    }
+    else {
+      tbl <- table(x[!is.na(x)])
+      x[is.na(x)] <- tbl[which.max(tbl)]
+    }
+    x
+  })
+  imputedData <- as.data.frame(imputedData)
+
+  csemListCall <- list(cSEM::csem, .model = model, .data = imputedData)
+  csemListCall <- c(csemListCall, csemArgs)
+  fit <- list()
+  fit$FitList <- list(suppressWarnings(eval(as.call(csemListCall))))
+  fit$PathList <- lapply(fit$FitList,
+    function(x) {
+      path <- x$Estimates$Path_estimates
+      path <- path[, colSums(path) != 0]
+      colSums(path)
+    })
+  fit$LoadingList <- lapply(fit$FitList,
+    function(x) {
+      colSums(x$Estimates$Loading_estimates)
+    })
+  fit$PathVCOVList <- lapply(fit$FitList,
+    function(x) {
+      cov(x$Estimates$Estimates_resample$Estimates1$Path_estimates$Resampled)
+    })
+  fit$LoadingVCOVList <- lapply(fit$FitList,
+    function(x) {
+      cov(x$Estimates$Estimates_resample$Estimates1$Loading_estimates$Resampled)
+    })
+  fit$DataList <- imputedData
+  fit$model <- model
+  fit$call <- CALL
+  fit$csemListCall <- csemListCall
+  fit$convList <- lapply(fit$FitList, function(x) x$Information$Weight_info$Convergence_status)
+  if (!all(unlist(fit$convList))) 
+    warning("the model did not converge for any imputed data sets.")
+  fit$dots <- dots
+  fit$nobs <- nrow(data)
+  fit$pooled <- csem_combine(fit$FitList[[1]], level = level)
+  fit$pooled
+}
+
+knnimp <- function(data, csemArgs = list(), k = 5, method = "euclidean",
+  verbose = FALSE, level = 0.95, ...) {
+  CALL <- match.call()
+  dots <- list(...)
+  imputedData <- NULL
+
+  if (missing(data)) {
+    stop("a dataset is needed to run the plssemMIBOOT() function.")
+  }
+
+  # imputedData <- knn_impute_OLD(data, k = k, method = method)
+  imputedData <- knn_impute(data, k = k)
+
+  csemListCall <- list(cSEM::csem, .model = model, .data = imputedData)
+  csemListCall <- c(csemListCall, csemArgs)
+  fit <- list()
+  fit$FitList <- list(suppressWarnings(eval(as.call(csemListCall))))
+  fit$PathList <- lapply(fit$FitList,
+    function(x) {
+      path <- x$Estimates$Path_estimates
+      path <- path[, colSums(path) != 0]
+      colSums(path)
+    })
+  fit$LoadingList <- lapply(fit$FitList,
+    function(x) {
+      colSums(x$Estimates$Loading_estimates)
+    })
+  fit$PathVCOVList <- lapply(fit$FitList,
+    function(x) {
+      cov(x$Estimates$Estimates_resample$Estimates1$Path_estimates$Resampled)
+    })
+  fit$LoadingVCOVList <- lapply(fit$FitList,
+    function(x) {
+      cov(x$Estimates$Estimates_resample$Estimates1$Loading_estimates$Resampled)
+    })
+  fit$DataList <- imputedData
+  fit$model <- model
+  fit$call <- CALL
+  fit$csemListCall <- csemListCall
+  fit$convList <- lapply(fit$FitList, function(x) x$Information$Weight_info$Convergence_status)
+  if (!all(unlist(fit$convList))) 
+    warning("the model did not converge for any imputed data sets.")
+  fit$dots <- dots
+  fit$nobs <- nrow(data)
+  fit$k <- k
+  fit$pooled <- csem_combine(fit$FitList[[1]], level = level)
+  fit$pooled
+}
+
+knn_impute_OLD <- function(data, k = 5, method = "euclidean") {
+  imp_data <- data
+  for (col_name in names(data)) {
+    col <- data[[col_name]]
+    if (any(is.na(col))) {                # if there are missing values
+      missing_idx <- which(is.na(col))    # indices of missing values
+      observed_idx <- which(!is.na(col))  # indices of non-missing values
+      
+      # use all other columns as features
+      feature_cols <- setdiff(names(data), col_name)
+      distances <- stats::dist(data[c(missing_idx, observed_idx), feature_cols, drop = FALSE],
+                               method = method)
+      distances <- as.matrix(distances)
+      for (i in 1:length(missing_idx)) {
+        dst <- distances[i, ]
+        dst[which(dst == 0)] <- 1e+100
+
+        # get k nearest neighbors (smallest distances)
+        k_nearest <- observed_idx[order(dst)][1:k]
+        
+        # impute based on type
+        if (is.numeric(col)) {
+          imp_data[missing_idx[i], col_name] <- mean(col[k_nearest], na.rm = TRUE)
+        }
+        else {
+          imp_data[missing_idx[i], col_name] <- mode_function(col[k_nearest], na.rm = TRUE)
+        }
+      }
+    }
+  }
+  
+  imp_data
+}
+
+knn_impute <- function(X, k = 5, ties = TRUE) {
+  n <- nrow(X)
+  Q <- ncol(X)
+ 
+  Ximp <- X
+  complete_idx <- which(rowSums(is.na(X)) == 0)
+  N <- length(complete_idx)          # number of complete observations
+  incomplete_idx <- setdiff(1:n, complete_idx)
+  R <- n - N                         # number of incomplete observations
+ 
+  for (i in 1:R) {
+    vars_nonmiss <- which(!is.na(X[incomplete_idx[i], ]))
+    tmp_idx <- which(apply(X[, vars_nonmiss, drop = FALSE], 1, function(x) all(!is.na(x))))
+    tmp_idx <- cbind(tmp_idx, 1:length(tmp_idx))
+    D_idx <- tmp_idx[which(incomplete_idx[i] == tmp_idx[, 1]), 2]
+    disti <- euclidean_dist(X[tmp_idx[, 1], vars_nonmiss, drop = FALSE], D_idx)
+    disti[D_idx] <- 1e+100
+    disti <- cbind(disti, tmp_idx)
+    disti <- disti[order(disti[, 1], disti[, 2]), ]
+    disti_uniq <- unique(disti[, 1])
+    if (ties & (length(disti_uniq) != nrow(disti))) {
+      disti_num <- length(disti_uniq)
+      for (j in 1:disti_num) {
+        disti_j <- which(disti[, 1] == disti_uniq[j])
+        tmp <- disti[disti_j, , drop = FALSE]
+        disti[disti_j, ] <- tmp[sample(1:nrow(tmp)), ]  # ties randomly broken
+      }
+    }    
+    if (k > nrow(disti))
+      stop("value of k too large.")
+    Xsub <- X[disti[1:k, 2], ]
+    knew <- k
+    while (any(colSums(is.na(Xsub)) == knew)) {
+      knew <- knew + 1
+      Xsub <- X[disti[1:knew, 2], ]
+    }
+    for (q in 1:Q) {
+      if (is.numeric(X[, q])) {
+        Ximp[incomplete_idx[i], q] <- mean(Xsub[, q], na.rm = TRUE)
+      }
+      else {
+        Ximp[incomplete_idx[i], q] <- mode_function(Xsub[, q], na.rm = TRUE)
+      }
+    }
+  }
+
+  Ximp
+}

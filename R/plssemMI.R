@@ -1,41 +1,110 @@
-plssemMI <- function(model, data, ..., m = 5, miArgs = list(),
-                     csemArgs = list(), miPackage = "mice", seed = 12345) {
+plssemMIBOOT <- function(model, data, ..., m = 5, miArgs = list(),
+                         csemArgs = list(), miPackage = "mice",
+                         verbose = FALSE, seed = NULL, level = 0.95) {
   CALL <- match.call()
   dots <- list(...)
-  # if (all(!is.null(dots$test),
-  #   tolower(dots$test) %in% c("boot", "bootstrap", "bollen.stine")) ||
-  #   all(!is.null(dots$se), tolower(dots$se) %in% c("boot", "bootstrap"))) {
-  #   stop("Bootstraping unavailable (and not recommended) in combination with ", 
-  #        "multiple imputations. For robust confidence intervals of indirect", 
-  #        " effects, see the ?semTools::monteCarloMed help page. To bootstrap ", 
-  #        "within each imputation, users can pass a custom function to the ", 
-  #        "FUN= argument (see ?lavaanList) to save bootstrap distributions in ", 
-  #        "the @funList slot, then manually combine afterward.")
-  # }
   if (!is.null(seed)) {
-    seed <- as.integer(seed[1])
+    set.seed(seed = seed)
   }
-  else stop("A seed is required to let you reproduce the simulation results")
   imputedData <- NULL
+
   if (missing(data)) {
-    stop("A seed is needed to reproduce the simulation results")
+    stop("a dataset is needed to run the plssemMIBOOT() function.")
   }
-  else if (is.data.frame(data)) {
-    if (miPackage[1] == "Amelia") {
+
+  if (miPackage[1] == "Amelia") {
+    requireNamespace("Amelia")
+    if (!"package:Amelia" %in% search()) 
+      attachNamespace("Amelia")
+    imputeCall <- c(list(Amelia::amelia, x = data, m = m, p2s = 0), miArgs)
+    imputedData <- unclass(eval(as.call(imputeCall))$imputations)
+  }
+  else if (miPackage[1] == "mice") {
+    requireNamespace("mice")
+    if (!"package:mice" %in% search()) 
+      attachNamespace("mice")
+    imputeCall <- c(list(mice::mice, data = data, m = m, 
+                         diagnostics = FALSE, printFlag = FALSE), miArgs)
+    miceOut <- eval(as.call(imputeCall))
+    imputedData <- list()
+    for (i in 1:m) {
+      imputedData[[i]] <- mice::complete(data = miceOut, 
+                                         action = i, include = FALSE)
+    }
+  }
+  else stop("currently plssemMIBOOT() only supports imputation by Amelia or mice.")
+
+  csemListCall <- list(cSEM::csem, .model = model, .data = imputedData)
+  csemListCall <- c(csemListCall, csemArgs)
+  fit <- list()
+  fit$FitList <- suppressWarnings(eval(as.call(csemListCall)))
+  fit$PathList <- lapply(fit$FitList,
+    function(x) {
+      path <- x$Estimates$Path_estimates
+      path <- path[, colSums(path) != 0]
+      colSums(path)
+    })
+  fit$LoadingList <- lapply(fit$FitList,
+    function(x) {
+      colSums(x$Estimates$Loading_estimates)
+    })
+  fit$PathVCOVList <- lapply(fit$FitList,
+    function(x) {
+      cov(x$Estimates$Estimates_resample$Estimates1$Path_estimates$Resampled)
+    })
+  fit$LoadingVCOVList <- lapply(fit$FitList,
+    function(x) {
+      cov(x$Estimates$Estimates_resample$Estimates1$Loading_estimates$Resampled)
+    })
+  fit$DataList <- imputedData
+  fit$model <- model
+  fit$call <- CALL
+  fit$csemListCall <- csemListCall
+  fit$imputeCall <- imputeCall
+  fit$convList <- lapply(fit$FitList, function(x) x$Information$Weight_info$Convergence_status)
+  if (!all(unlist(fit$convList))) 
+    warning("the model did not converge for any imputed data sets.")
+  fit$dots <- dots
+  fit$nobs <- nrow(data)
+  fit$pooled <- poolMI(fit, boot_mi = "miboot", level = level)
+  fit$pooled
+}
+
+plssemBOOTMI <- function(model, data, ..., m = 5, miArgs = list(),
+                         csemArgs = list(), miPackage = "mice",
+                         bootArgs = list(), verbose = FALSE, seed = NULL,
+                         level = 0.95) {
+  CALL <- match.call()
+  dots <- list(...)
+  if (!is.null(seed)) {
+    set.seed(seed = seed)
+  }
+
+  if (missing(data)) {
+    stop("a dataset is needed to run the plssemBOOTMI() function.")
+  }
+
+  boot_i <- 0
+  bootstrap_mi <- function(data, indices, mipkg, miargs, miruns, csemmodel, csemargs, verb) {
+    boot_i <<- boot_i + 1
+    if (verb)
+      cat(paste0("  - bootstrap sample ", boot_i, "\n"))
+    boot_sample <- data[indices, ]
+
+    imputedData <- NULL
+    if (mipkg[1] == "Amelia") {
       requireNamespace("Amelia")
       if (!"package:Amelia" %in% search()) 
         attachNamespace("Amelia")
-      imputeCall <- c(list(Amelia::amelia, x = data, m = m, p2s = 0), miArgs)
-      set.seed(seed)
+      imputeCall <- c(list(Amelia::amelia, x = boot_sample, m = miruns, p2s = 0), miargs)
       imputedData <- unclass(eval(as.call(imputeCall))$imputations)
     }
-    else if (miPackage[1] == "mice") {
+    else if (mipkg[1] == "mice") {
       requireNamespace("mice")
       if (!"package:mice" %in% search()) 
         attachNamespace("mice")
-      imputeCall <- c(list(mice::mice, data = data, m = m, 
-                           diagnostics = FALSE, printFlag = FALSE), miArgs)
-      set.seed(seed)
+      imputeCall <- c(list(mice::mice, data = boot_sample, m = miruns, 
+                           diagnostics = FALSE, printFlag = FALSE), miargs)
       miceOut <- eval(as.call(imputeCall))
       imputedData <- list()
       for (i in 1:m) {
@@ -43,80 +112,186 @@ plssemMI <- function(model, data, ..., m = 5, miArgs = list(),
                                            action = i, include = FALSE)
       }
     }
-    else stop("Currently runMI only supports imputation by Amelia or mice")
+    else stop("currently plssemBOOTMI() only supports imputation by Amelia or mice.")
+
+    csemListCall <- list(cSEM::csem, .model = csemmodel, .data = imputedData)
+    csemListCall <- c(csemListCall, csemargs)
+    fit <- list()
+    fit$FitList <- suppressWarnings(eval(as.call(csemListCall)))
+    fit$PathList <- lapply(fit$FitList,
+      function(x) {
+        path <- x$Estimates$Path_estimates
+        path <- path[, colSums(path) != 0]
+        colSums(path)
+      })
+    fit$LoadingList <- lapply(fit$FitList,
+      function(x) {
+        colSums(x$Estimates$Loading_estimates)
+      })
+    fit$convList <- lapply(fit$FitList, function(x) x$Information$Weight_info$Convergence_status)
+    if (!all(unlist(fit$convList))) 
+      warning("the model did not converge for any imputed datasets.")
+    fit$DataList <- imputedData
+    c(rubin_est(fit$PathList), rubin_est(fit$LoadingList))
   }
-  else if (is.list(data)) {
-    if (requireNamespace("mice", quietly = TRUE)) {
-      if (mice::is.mids(data)) {
-        m <- data$m
-        imputedData <- list()
-        for (i in 1:m) {
-          imputedData[[i]] <- mice::complete(data, action = i, include = FALSE)
-        }
-        imputeCall <- list()
-      }
-      else {
-        seed <- integer(length = 0)
-        imputeCall <- list()
-        imputedData <- data
-        m <- length(data)
-        class(imputedData) <- "list"
-      }
+
+  if (!is.null(bootArgs$parallel) & bootArgs$ncpus > 1)
+    verbose <- FALSE
+  boot_fit <- list()
+  bootListCall <- list(boot::boot, data = data, statistic = bootstrap_mi,
+    R = csemArgs$.R, mipkg = miPackage, miargs = miArgs, miruns = m,
+    csemmodel = model, csemargs = csemArgs, verb = verbose)
+  bootListCall <- c(bootListCall, bootArgs)
+  bootRes <- eval(as.call(bootListCall))
+  boot_fit$BootOrig <- bootRes$t0   # these are the cSEM results on the original dataset after imputation
+  boot_fit$BootMatrix <- bootRes$t
+  boot_fit$model <- model
+  boot_fit$call <- CALL
+  boot_fit$dots <- dots
+  boot_fit$nobs <- nrow(data)
+  boot_fit$pooled <- poolMI(boot_fit, boot_mi = "bootmi", level = level)
+  boot_fit$pooled
+}
+
+plssemMIBOOT_PS <- function(model, data, ..., m = 5, miArgs = list(),
+                            csemArgs = list(), miPackage = "mice",
+                            verbose = FALSE, seed = NULL, level = 0.95) {
+  CALL <- match.call()
+  dots <- list(...)
+  if (!is.null(seed)) {
+    set.seed(seed = seed)
+  }
+  imputedData <- NULL
+
+  if (missing(data)) {
+    stop("a dataset is needed to run the plssemMIBOOT() function.")
+  }
+
+  if (miPackage[1] == "Amelia") {
+    requireNamespace("Amelia")
+    if (!"package:Amelia" %in% search()) 
+      attachNamespace("Amelia")
+    imputeCall <- c(list(Amelia::amelia, x = data, m = m, p2s = 0), miArgs)
+    imputedData <- unclass(eval(as.call(imputeCall))$imputations)
+  }
+  else if (miPackage[1] == "mice") {
+    requireNamespace("mice")
+    if (!"package:mice" %in% search()) 
+      attachNamespace("mice")
+    imputeCall <- c(list(mice::mice, data = data, m = m, 
+                         diagnostics = FALSE, printFlag = FALSE), miArgs)
+    miceOut <- eval(as.call(imputeCall))
+    imputedData <- list()
+    for (i in 1:m) {
+      imputedData[[i]] <- mice::complete(data = miceOut, 
+                                         action = i, include = FALSE)
     }
-    else {
-      seed <- integer(length = 0)
-      imputeCall <- list()
-      imputedData <- data
-      m <- length(data)
-      class(imputedData) <- "list"
-    }
   }
-  else if (is(data, "lavaan.mi")) {
-    seed <- data@seed
-    imputeCall <- data@imputeCall
-    imputedData <- data@DataList
-    m <- length(imputedData)
-  }
-  else stop("data is not a valid input type: a partially observed data.frame,", 
-            " a list of imputed data.frames, or previous lavaan.mi object")
-  lavListCall <- list(cSEM::csem, .model = model, .data = imputedData)
-  lavListCall <- c(lavListCall, csemArgs)
+  else stop("currently plssemMIBOOT_PS() only supports imputation by Amelia or mice.")
+
+  csemListCall <- list(cSEM::csem, .model = model, .data = imputedData)
+  csemListCall <- c(csemListCall, csemArgs)
   fit <- list()
-  fit$FitList <- eval(as.call(lavListCall))
-  fit$ParamList <- lapply(fit$FitList,
-    function(x) {
-      path <- x$Estimates$Path_estimates
-      path <- path[, colSums(path) != 0]
-      path <- colSums(path)
-      load <- colSums(x$Estimates$Loading_estimates)
-      c(path, load)
-    })
-  fit$VCOVList <- lapply(fit$FitList,
-    function(x) {
-      vcov_path <- cov(x$Estimates$Estimates_resample$Estimates1$Path_estimates$Resampled)
-      vcov_load <- cov(x$Estimates$Estimates_resample$Estimates1$Loading_estimates$Resampled)
-      combine_vcov(vcov_path, vcov_load)
-    })
+  fit$FitList <- suppressWarnings(eval(as.call(csemListCall)))
+  fit$PooledSample <- pool_samples(fit)
   fit$DataList <- imputedData
+  fit$model <- model
   fit$call <- CALL
-  fit$lavListCall <- lavListCall
+  fit$csemListCall <- csemListCall
   fit$imputeCall <- imputeCall
   fit$convList <- lapply(fit$FitList, function(x) x$Information$Weight_info$Convergence_status)
   if (!all(unlist(fit$convList))) 
     warning("the model did not converge for any imputed data sets.")
   fit$dots <- dots
-  fit$pooled <- poolMI(fit)
-  fit
+  fit$nobs <- nrow(data)
+  fit$pooled <- poolMI(fit, boot_mi = "miboot_pooled", level = level)
+  fit$pooled
 }
 
-poolMI <- function(fitMI) {
-  parest_mi <- rubin_parest(fitMI$ParamList)
-  vcov_mi <- rubin_vcov(fitMI$ParamList, fitMI$VCOVList)
-  sd_mi <- sqrt(diag(vcov_mi))
+plssemBOOTMI_PS <- function(model, data, ..., m = 5, miArgs = list(),
+                            csemArgs = list(), miPackage = "mice",
+                            bootArgs = list(), verbose = FALSE,
+                            seed = NULL, level = 0.95) {
+  CALL <- match.call()
+  dots <- list(...)
+  if (!is.null(seed)) {
+    set.seed(seed = seed)
+  }
 
-  idx <- which(parest_mi != 0)
+  if (missing(data)) {
+    stop("a dataset is needed to run the plssemBOOTMI() function.")
+  }
 
-  out <- list(parest = parest_mi[idx], vcov = vcov_mi[idx, idx], sd = sd_mi[idx])
+  boot_i <- 0
+  bootstrap_mi_ps <- function(data, indices, mipkg, miargs, miruns, csemmodel, csemargs, verb) {
+    boot_i <<- boot_i + 1
+    if (verb)
+      cat(paste0("  - bootstrap sample ", boot_i, "\n"))
+    boot_sample <- data[indices, ]
 
-  out
+    imputedData <- NULL
+    if (mipkg[1] == "Amelia") {
+      requireNamespace("Amelia")
+      if (!"package:Amelia" %in% search()) 
+        attachNamespace("Amelia")
+      imputeCall <- c(list(Amelia::amelia, x = boot_sample, m = miruns, p2s = 0), miargs)
+      imputedData <- unclass(eval(as.call(imputeCall))$imputations)
+    }
+    else if (mipkg[1] == "mice") {
+      requireNamespace("mice")
+      if (!"package:mice" %in% search()) 
+        attachNamespace("mice")
+      imputeCall <- c(list(mice::mice, data = boot_sample, m = miruns, 
+                           diagnostics = FALSE, printFlag = FALSE), miargs)
+      miceOut <- eval(as.call(imputeCall))
+      imputedData <- list()
+      for (i in 1:m) {
+        imputedData[[i]] <- mice::complete(data = miceOut, 
+                                           action = i, include = FALSE)
+      }
+    }
+    else stop("currently plssemBOOTMI_PS() only supports imputation by Amelia or mice.")
+
+    csemListCall <- list(cSEM::csem, .model = csemmodel, .data = imputedData)
+    csemListCall <- c(csemListCall, csemargs)
+    fit <- list()
+    fit$FitList <- suppressWarnings(eval(as.call(csemListCall)))
+    fit$ParamList <- lapply(fit$FitList,
+      function(x) {
+        path <- x$Estimates$Path_estimates
+        path <- path[, colSums(path) != 0]
+        path <- colSums(path)
+        load <- colSums(x$Estimates$Loading_estimates)
+        c(path, load)
+      })
+    fit$PooledMI <- do.call(cbind, fit$ParamList)
+    fit$convList <- lapply(fit$FitList, function(x) x$Information$Weight_info$Convergence_status)
+    if (!all(unlist(fit$convList))) 
+      warning("the model did not converge for any imputed datasets.")
+    fit$DataList <- imputedData
+    fit$PooledMI
+  }
+
+  if (!is.null(bootArgs$parallel) & bootArgs$ncpus > 1)
+    verbose <- FALSE
+  boot_fit <- list()
+  bootListCall <- list(boot::boot, data = data, statistic = bootstrap_mi_ps,
+    R = csemArgs$.R, mipkg = miPackage, miargs = miArgs, miruns = m,
+    csemmodel = model, csemargs = csemArgs, verb = verbose)
+  bootListCall <- c(bootListCall, bootArgs)
+  bootRes <- eval(as.call(bootListCall))
+  boot_fit$BootOrig <- bootRes$t0   # these are the cSEM results on the original dataset after imputation
+  boot_fit$BootMatrix <- bootRes$t
+  npars <- ncol(boot_fit$BootMatrix)/m
+  bootmi_mat <- matrix(NA, nrow = 0, ncol = npars)
+  for (i in 1:m) {
+    bootmi_mat <- rbind(bootmi_mat, boot_fit$BootMatrix[, ((i - 1)*npars + 1):(npars*i)])
+  }
+  boot_fit$PooledSample <- bootmi_mat
+  boot_fit$model <- model
+  boot_fit$call <- CALL
+  boot_fit$dots <- dots
+  boot_fit$nobs <- nrow(data)
+  boot_fit$pooled <- poolMI(boot_fit, boot_mi = "bootmi_pooled", level = level)
+  boot_fit$pooled
 }

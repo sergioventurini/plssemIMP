@@ -1,6 +1,9 @@
-create_data <- function(run = 1, n = 50, method = "norm", pkg = NULL, args = list()) {
-  set.seed(seed = run)
-  
+create_data <- function(n = 50, method = "norm", pkg = NULL, args = list(),
+  seed = NULL) {
+  if (!is.null(seed)) {
+    set.seed(seed = seed)
+  }
+
   if (method == "reg") {
     beta <- args$beta
     sigma2 <- args$sigma2
@@ -44,7 +47,7 @@ create_data <- function(run = 1, n = 50, method = "norm", pkg = NULL, args = lis
     }
   }
   else {
-    stop("the specified method is not implemented.")
+    stop("the specified data creation method is not available.")
   }
 
   if (!is.null(args$cn)) {

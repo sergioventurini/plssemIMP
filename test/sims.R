@@ -1,5 +1,7 @@
 library(plssemMI)
+library(tidyverse)
 
+## setup the data creation
 #  (1) multivariate normal data
 # mean <- rep(0, 9)
 # sigma <- diag(9)
@@ -72,39 +74,67 @@ eta2 =~ 0.7*y21 + 0.7*y22 + 0.9*y23
 eta3 =~ 0.7*y31 + 0.8*y32 + 0.7*y33
 eta4 =~ 0.7*y41 + 0.7*y42 + 0.6*y43
 '
+argsCD <- list(n = nsample, method = "model", pkg = "cSEM.DGP", model = model)
 
-## multiple imputation analysis
-res <- run_sims(runs = 50,
-                argsCD = list(n = 5e2, method = "model", pkg = "cSEM.DGP",
-                              model = model),
+true_model <- cSEM::parseModel(model)
+true_path <- colSums(true_model$structural2)
+true_path <- true_path[true_path != 0]
+true_load <- colSums(true_model$measurement2)
+true_coefs <- c(true_path, true_load)
+
+## perform imputation analysis
+# set.seed(101)
+nruns <- 100
+nsample <- 1e3
+nimp <- 5
+nboot <- 200
+conflev <- 0.95
+argscSEM <- list(.disattenuate = TRUE,
+                 .R = nboot,
+                 .tolerance = 1e-07,
+                 .resample_method = "bootstrap",
+                 .handle_inadmissibles = "replace",
+                 .eval_plan = ifelse(.Platform$OS.type == "unix", "multicore", "multisession"))
+res <- run_sims(runs = nruns,
+                argsCD = argsCD,
                 argsMM = list(prop = .5, mech = "MCAR", method = "ampute"),
-                argsMI = list(m = 5, methods = c("pmm", "norm"), pkg = "mice"),
-                argscSEM = list(.disattenuate = TRUE,
-                                .R = 100,
-                                .tolerance = 1e-07,
-                                .resample_method = "bootstrap",
-                                .handle_inadmissibles = "replace"))
+                argsMI = list(m = nimp, methods = c("pmm", "norm"), pkg = "mice",
+                              model = model),  # WE ARE USING THE SAME MODEL AS IN THE DGP!
+                argscSEM = argscSEM,
+                argsBOOT = list(parallel = ifelse(.Platform$OS.type == "unix", "multicore", "snow"),
+                                ncpus = parallel::detectCores()),
+                verbose = TRUE, boot_mi = "miboot", level = conflev,
+                meanimp = TRUE, knnimp = TRUE, argsKNN = list(k = c(5, 7)),
+                listwise = TRUE, fulloriginal = TRUE,
+                seed = 1406)
 
-## analysis on original complete data
-opts <- list(.disattenuate = TRUE,
-             .R = 100,
-             .tolerance = 1e-07,
-             .resample_method = "bootstrap",
-             .handle_inadmissibles = "replace")
-dat_orig <- res[[1]]$dat_orig
-res_orig_call <- list(cSEM::csem, .model = model, .data = dat_orig)
-res_orig_call <- c(res_orig_call, opts)
-res_orig <- eval(as.call(res_orig_call))
-res_orig <- csem_combine(res_orig)
+## aggregate all results
+res_df <- aggregate_results(res, true_coefs = true_coefs,
+                            methods = c("pmm", "listwise", "fulloriginal"),
+                            qual_meas = c("PB", "CR"))
 
-## complete-case (listwise deletion) analysis
-opts <- list(.disattenuate = TRUE,
-             .R = 100,
-             .tolerance = 1e-07,
-             .resample_method = "bootstrap",
-             .handle_inadmissibles = "replace")
-dat_miss <- na.omit(res[[1]]$dat_miss)
-res_miss_call <- list(cSEM::csem, .model = model, .data = dat_miss)
-res_miss_call <- c(res_miss_call, opts)
-res_miss <- eval(as.call(res_miss_call))
-res_miss <- csem_combine(res_miss)
+## represent the results graphically
+res_path_est <- extract_results(res, approach = "pmm", type = "path", what = "est")
+res_load_est <- extract_results(res, approach = "pmm", type = "load", what = "est")
+mi_est <- rbind(res_path_est, res_load_est)
+mi_est <- data.frame(param = rownames(mi_est), mi_est, true_coef)
+df_long <- mi_est %>%
+  pivot_longer(cols = starts_with("run_"),
+               names_to = "simulation",
+               values_to = "estimate")
+
+constants <- data.frame(param = rownames(mi_est), true_coefs = true_coefs)
+constants <- constants %>%
+  mutate(x = as.numeric(factor(param)))
+
+ggplot(df_long, aes(x = param, y = estimate, fill = param)) +
+  geom_boxplot(alpha = 0.7) +
+  geom_segment(data = constants,
+               aes(x = x - 0.4, xend = x + 0.4,
+                   y = true_coefs, yend = true_coefs),
+               linewidth = 2, linetype = "solid",
+               alpha = 0.4) +
+  theme_minimal() +
+  labs(title = "Boxplot of MI estimates by parameter",
+       x = "parameter",
+       y = "estimate")
