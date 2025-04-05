@@ -56,6 +56,11 @@ create_data <- function(n = 50, method = "norm", pkg = NULL, args = list(),
   if (!is.null(args$cn)) {
     colnames(data) <- args$cn
   }
+  else {
+    if (is.null(colnames(data))) {
+      colnames(data) <- cn
+    }
+  }
 
   data <- as.data.frame(data)
   data

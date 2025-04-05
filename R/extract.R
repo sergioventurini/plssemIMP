@@ -34,9 +34,11 @@ extract_results <- function(res, approach, type = "path", what = "est", simplify
   out
 }
 
-aggregate_results <- function(res, true_coefs, methods = "all", qual_meas = "all") {
-  if (is.null(true_coefs))
-    stop("true coefficient values must be provided.")
+aggregate_results <- function(res, true_coefs = NULL, methods = "all", qual_meas = "all") {
+  if (is.null(true_coefs) | missing(true_coefs) | any(is.na(true_coefs))) {
+    true_coefs <- NA
+    warning("the quality measures are not available.")
+  }
 
   nruns <- length(res) - 3
   nmeth <- length(res[[1]]) - 2
@@ -76,20 +78,24 @@ aggregate_results <- function(res, true_coefs, methods = "all", qual_meas = "all
     out <- cbind(out, rowMeans(res_est), rowMeans(res_sd), rowMeans(res_ci[, , 1]), rowMeans(res_ci[, , 2]))
     colnames(out) <- out_cn
 
-    out_cn <- c(colnames(out), paste0(qual_meas, "_", meth))
-    for (qual in qual_meas) {
-      qual_res <- switch(qual,
-        RB = rawbias(res_est, true_coefs),
-        PB = percentbias(res_est, true_coefs),
-        CR = coveragerate(res_ci, true_coefs),
-        AW = averagewidth(res_ci),
-        RMSE = rmse(res_est, true_coefs))
-      out <- cbind(out, qual_res)
+    if (!is.null(true_coefs) & !missing(true_coefs) & !any(is.na(true_coefs))) {
+      out_cn <- c(colnames(out), paste0(qual_meas, "_", meth))
+      for (qual in qual_meas) {
+        qual_res <- switch(qual,
+          RB = rawbias(res_est, true_coefs),
+          PB = percentbias(res_est, true_coefs),
+          CR = coveragerate(res_ci, true_coefs),
+          AW = averagewidth(res_ci),
+          RMSE = rmse(res_est, true_coefs))
+        out <- cbind(out, qual_res)
+      }
+      colnames(out) <- out_cn
     }
-    colnames(out) <- out_cn
   }
   attr(out, "methods") <- methods
-  attr(out, "qual_meas") <- qual_meas
+  if (!is.null(true_coefs) & !missing(true_coefs) & !any(is.na(true_coefs))) {
+    attr(out, "qual_meas") <- qual_meas
+  }
 
   out
 }

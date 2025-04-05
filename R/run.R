@@ -18,7 +18,7 @@ run_sims <- function(
   nCD <- argsCD$n
   methodCD <- argsCD$method
   pkgCD <- argsCD$pkg
-  modelCD <- argsCD$model
+  argsCD <- setdiff(argsCD, list(methodCD, pkgCD))
   propMM <- argsMM$prop
   mechMM <- argsMM$mech
   methodMM <- argsMM$method
@@ -37,16 +37,15 @@ run_sims <- function(
       stop("the number of datasets provided is smaller than the number of runs.")
   }
 
-  res_all <- res <- res_seeds <- list()
+  res_all <- res <- run_seeds <- list()
   for (run in 1:runs) {
-    res_seeds[[run]] <- .Random.seed
+    run_seeds[[run]] <- .Random.seed
     if (verbose)
       cat(paste0("Simulation run ", run, " of ", runs, "\n"))
 
     ## STEP 1: generate complete data
     if (is.null(datalist)) {
-      dat <- create_data(n = nCD, method = methodCD, pkg = pkgCD,
-                         args = list(model = modelCD))
+      dat <- create_data(n = nCD, method = methodCD, pkg = pkgCD, args = argsCD)
     }
     else {
       dat <- datalist[[run]]
@@ -116,7 +115,19 @@ run_sims <- function(
                                          seed = NULL, level = level)
       }
       else if (boot_mi == "weighted_bootmi") {
-        # [[TODO]]
+        if (!is.null(argscSEM$.resample_method) & argscSEM$.resample_method != "none") {
+          argscSEM$.resample_method <- "none"
+          warning("the .resample_method option has been set to 'none'.")
+        }
+        if (argsBOOT$parallel != "no") {
+          argsBOOT$parallel <- "no"
+          warning("the weighted version of 'bootmi' can't use parallel computation and it will take longer.")
+        }
+        res[[methMI]] <- plssemWGT_BOOTMI(model = modelMI, data = dat, m = mMI,
+                                          miArgs = list(method = methMI),
+                                          miPackage = pkgMI, csemArgs = argscSEM,
+                                          bootArgs = argsBOOT, verbose = verbose,
+                                          seed = NULL, level = level)
       }
       else {
         stop("the selected bootstrap/multiple imputation approach is not available.")
@@ -124,6 +135,9 @@ run_sims <- function(
     }
 
     ## STEP 4: perform single imputation
+    if (boot_mi == "bootmi" | boot_mi == "bootmi_pooled" | boot_mi == "weighted_bootmi")
+      argscSEM$.resample_method <- "bootstrap"
+
     # mean imputation
     if (meanimp) {
       if (verbose)
@@ -185,7 +199,7 @@ run_sims <- function(
 
   names(res_all) <- paste0("run_", 1:runs)
   res_all$start_seed <- start_seed
-  res_all$res_seeds <- res_seeds
+  res_all$run_seeds <- run_seeds
   res_all$call <- CALL
 
   res_all

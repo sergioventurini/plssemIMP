@@ -185,7 +185,7 @@ barnard_rubin <- function(fitMI, what = "path") {
   dfold * dfobs / (dfold + dfobs)
 }
 
-poolMI <- function(fitMI, boot_mi, level = 0.95) {
+poolMI <- function(fitMI, boot_mi, level = 0.95, weights = NULL) {
   if (boot_mi == "miboot") {
     path_est <- rubin_est(fitMI$PathList)
     idx <- which(path_est != 0)
@@ -264,6 +264,27 @@ poolMI <- function(fitMI, boot_mi, level = 0.95) {
     load_vcov <- var(load)
     load_sd <- sqrt(diag(load_vcov))
     load_ci <- apply(load, 2, quantile, probs = c(alpha/2, 1 - alpha/2))
+    load_lwr <- load_ci[1, ]
+    load_upr <- load_ci[2, ]
+  }
+  else if (boot_mi == "weighted_bootmi") {
+    weights <- weights/sum(weights)
+    npath <- sum(cSEM::parseModel(fitMI$model)$structural)
+    path <- fitMI$BootMatrix[, 1:npath]
+    load <- fitMI$BootMatrix[, (npath + 1):ncol(fitMI$BootMatrix)]
+    alpha <- (1 - level)
+
+    path_est <- apply(path, 2, weighted.mean, w = weights)
+    path_vcov <- cov.wt(x = path, wt = weights, cor = FALSE, center = TRUE, method = "unbiased")$cov
+    path_sd <- sqrt(diag(path_vcov))
+    path_ci <- apply(path, 2, Hmisc::wtd.quantile, probs = c(alpha/2, 1 - alpha/2), weights = weights, normwt = TRUE)
+    path_lwr <- path_ci[1, ]
+    path_upr <- path_ci[2, ]
+
+    load_est <- apply(load, 2, weighted.mean, w = weights)
+    load_vcov <- cov.wt(x = load, wt = weights, cor = FALSE, center = TRUE, method = "unbiased")$cov
+    load_sd <- sqrt(diag(load_vcov))
+    load_ci <- apply(load, 2, Hmisc::wtd.quantile, probs = c(alpha/2, 1 - alpha/2), weights = weights, normwt = TRUE)
     load_lwr <- load_ci[1, ]
     load_upr <- load_ci[2, ]
   }

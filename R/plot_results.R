@@ -1,4 +1,8 @@
-plot_results <- function(res, true_coefs, methods = "all", values = "est") {
+plot_results <- function(res, true_coefs = NULL, methods = "all", values = "est") {
+  if (is.null(true_coefs) | missing(true_coefs)) {
+    true_coefs <- NA
+  }
+
   nruns <- length(res) - 3
   nmeth <- length(res[[1]]) - 2
   methnm <- names(res[[1]])[1:(length(res[[1]]) - 2)]
@@ -21,9 +25,16 @@ plot_results <- function(res, true_coefs, methods = "all", values = "est") {
   for (meth in methods) {
     for (val in values) {
       res_path_toplot <- extract_results(res, approach = meth, type = "path", what = val)
+      rownames(res_path_toplot) <- paste0("eta", 1:nrow(res_path_toplot))
       res_load_toplot <- extract_results(res, approach = meth, type = "load", what = val)
+      rownames(res_load_toplot) <- paste0("lambda", 1:nrow(res_load_toplot))
       res_toplot <- rbind(res_path_toplot, res_load_toplot)
-      res_toplot <- data.frame(param = rownames(res_toplot), res_toplot, true_coef)
+      if (!is.null(true_coefs) & !missing(true_coefs) & !any(is.na(true_coefs))) {
+        res_toplot <- data.frame(param = rownames(res_toplot), res_toplot, true_coefs)
+      }
+      else {
+        res_toplot <- data.frame(param = rownames(res_toplot), res_toplot)
+      }
       df_long <- res_toplot %>%
         tidyr::pivot_longer(cols = starts_with("run_"),
                             names_to = "simulation",
@@ -41,7 +52,7 @@ plot_results <- function(res, true_coefs, methods = "all", values = "est") {
         ggplot2::labs(title = "Boxplot of MI estimates by parameter",
                       x = "parameter",
                       y = ifelse(val == "est", "estimate", "std. dev."))
-      if ((!is.null(true_coefs) | missing(true_coefs)) & val == "est") {
+      if (!is.null(true_coefs) & !missing(true_coefs) & !any(is.na(true_coefs)) & val == "est") {
         out <- out +
           ggplot2::geom_segment(data = constants,
                                 ggplot2::aes(x = x - 0.4, xend = x + 0.4,
