@@ -62,7 +62,7 @@ run_sims <- function(
     ## STEP 3: perform multiple imputation & bootstrap
     res <- list()
     for (methMI in methodsMI) {
-      if (verbose && length(methodsMI) > 1)
+      if (verbose)
         cat(paste0("  - multiple imputation package/method: ", pkgMI, "/", methMI, "\n"))
       if (boot_mi == "miboot") {
         if (is.null(argscSEM$.resample_method)) {

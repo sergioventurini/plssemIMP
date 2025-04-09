@@ -101,10 +101,10 @@ if (argsCD$method == "model") {
 }
 
 ## perform imputation analysis
-nruns <- 5
+nruns <- 100
 nsample <- 1e3
 nimp <- 5
-nboot <- 20
+nboot <- 200
 conflev <- 0.95
 argsCD <- c(argsCD, n = nsample)
 argscSEM <- list(.disattenuate = TRUE,
@@ -115,13 +115,13 @@ argscSEM <- list(.disattenuate = TRUE,
                  .eval_plan = ifelse(.Platform$OS.type == "unix", "multicore", "multisession"))
 res <- run_sims(runs = nruns,
                 argsCD = argsCD,
-                argsMM = list(prop = .5, mech = "MCAR", method = "ampute"),
-                argsMI = list(m = nimp, methods = c("pmm", "norm"), pkg = "mice",
+                argsMM = list(prop = .5, mech = "MAR", method = "ampute"),
+                argsMI = list(m = nimp, methods = c("pmm"), pkg = "mice",
                               model = model),  # WE ARE USING THE SAME MODEL AS IN THE DGP!
                 argscSEM = argscSEM,
                 argsBOOT = list(parallel = ifelse(.Platform$OS.type == "unix", "multicore", "snow"),
                                 ncpus = parallel::detectCores()),
-                verbose = TRUE, boot_mi = "miboot", level = conflev,
+                verbose = TRUE, boot_mi = "weighted_bootmi", level = conflev,
                 meanimp = TRUE, knnimp = TRUE, argsKNN = list(k = c(5, 7)),
                 listwise = TRUE, fulloriginal = TRUE,
                 seed = 1406)
