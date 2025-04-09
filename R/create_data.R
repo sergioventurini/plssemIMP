@@ -29,7 +29,8 @@ create_data <- function(n = 50, method = "norm", pkg = NULL, args = list(),
     skew <- args$skew
     kurt <- args$kurt
     p <- length(mean)
-    data <- SimDesign::rValeMaurelli(n = n, mean = mean, sigma = sigma, skew = skew, kurt = kurt)
+    data <- SimDesign::rValeMaurelli(n = n, mean = mean, sigma = sigma,
+      skew = skew, kurt = kurt)
     cn <- paste0("y", 1:p)
   }
   else if (method == "model") {
@@ -37,8 +38,8 @@ create_data <- function(n = 50, method = "norm", pkg = NULL, args = list(),
     if (pkg == "cSEM.DGP") {
       skew <- args$skew
       kurt <- args$kurt
-      data <- cSEM.DGP::generateData(.model = model, .N = n, .skewness = skew,
-        .kurtosis = kurt)
+      data <- cSEM.DGP::generateData(.model = model, .N = n,
+        .skewness = skew, .kurtosis = kurt)
     }
     else if (pkg == "simstandard") {
       data <- simstandard::sim_standardized(m = model, n = n,

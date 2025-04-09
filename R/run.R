@@ -62,7 +62,7 @@ run_sims <- function(
     ## STEP 3: perform multiple imputation & bootstrap
     res <- list()
     for (methMI in methodsMI) {
-      if (verbose & length(methodsMI) > 1)
+      if (verbose && length(methodsMI) > 1)
         cat(paste0("  - multiple imputation package/method: ", pkgMI, "/", methMI, "\n"))
       if (boot_mi == "miboot") {
         if (is.null(argscSEM$.resample_method)) {
@@ -79,7 +79,7 @@ run_sims <- function(
                                       verbose = verbose, seed = NULL, level = level)
       }
       else if (boot_mi == "bootmi") {
-        if (!is.null(argscSEM$.resample_method) & argscSEM$.resample_method != "none") {
+        if (!is.null(argscSEM$.resample_method) && argscSEM$.resample_method != "none") {
           argscSEM$.resample_method <- "none"
           warning("the .resample_method option has been set to 'none'.")
         }
@@ -104,7 +104,7 @@ run_sims <- function(
                                          verbose = verbose, seed = NULL, level = level)
       }
       else if (boot_mi == "bootmi_pooled") {
-        if (!is.null(argscSEM$.resample_method) & argscSEM$.resample_method != "none") {
+        if (!is.null(argscSEM$.resample_method) && argscSEM$.resample_method != "none") {
           argscSEM$.resample_method <- "none"
           warning("the .resample_method option has been set to 'none'.")
         }
@@ -115,7 +115,7 @@ run_sims <- function(
                                          seed = NULL, level = level)
       }
       else if (boot_mi == "weighted_bootmi") {
-        if (!is.null(argscSEM$.resample_method) & argscSEM$.resample_method != "none") {
+        if (!is.null(argscSEM$.resample_method) && argscSEM$.resample_method != "none") {
           argscSEM$.resample_method <- "none"
           warning("the .resample_method option has been set to 'none'.")
         }

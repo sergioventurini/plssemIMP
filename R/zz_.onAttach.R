@@ -3,7 +3,6 @@
 
 #' @exportPattern "^[[:alpha:]]+"
 #'
-#' @importFrom Rcpp evalCpp
 #' @importFrom utils globalVariables
 #' @importFrom tools file_path_as_absolute
 .onLoad <- function(lib, pkg){
@@ -20,8 +19,4 @@
     pkgname, utils::packageDescription(pkgname)$Version, pkgname))
   # packageStartupMessage("Caution: ", pkgname, " is under active developement! Breaking changes may occur in the future.")
     packageStartupMessage("Please report improvements and bugs to: https://github.com/sergioventurini/plssemMI/issues")
-}
-
-.onUnload <- function(lib) {
-  library.dynam.unload("plssemMI", lib)
 }

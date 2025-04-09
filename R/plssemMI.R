@@ -3,7 +3,7 @@ plssemMIBOOT <- function(model, data, ..., m = 5, miArgs = list(),
                          verbose = FALSE, seed = NULL, level = 0.95) {
   CALL <- match.call()
   dots <- list(...)
-  if (!is.null(seed) & !missing(seed)) {
+  if (!is.null(seed) && !missing(seed)) {
     set.seed(seed = seed)
   }
   imputedData <- NULL
@@ -76,7 +76,7 @@ plssemBOOTMI <- function(model, data, ..., m = 5, miArgs = list(),
                          level = 0.95) {
   CALL <- match.call()
   dots <- list(...)
-  if (!is.null(seed) & !missing(seed)) {
+  if (!is.null(seed) && !missing(seed)) {
     set.seed(seed = seed)
   }
 
@@ -135,8 +135,8 @@ plssemBOOTMI <- function(model, data, ..., m = 5, miArgs = list(),
     c(rubin_est(fit$PathList), rubin_est(fit$LoadingList))
   }
 
-  if (!is.null(bootArgs) & !missing(bootArgs)) {
-    if (bootArgs$parallel != "no" & bootArgs$ncpus > 1)
+  if (!is.null(bootArgs) && !missing(bootArgs)) {
+    if (bootArgs$parallel != "no" && bootArgs$ncpus > 1)
       verbose <- FALSE
   }
   boot_fit <- list()
@@ -160,7 +160,7 @@ plssemMIBOOT_PS <- function(model, data, ..., m = 5, miArgs = list(),
                             verbose = FALSE, seed = NULL, level = 0.95) {
   CALL <- match.call()
   dots <- list(...)
-  if (!is.null(seed) & !missing(seed)) {
+  if (!is.null(seed) && !missing(seed)) {
     set.seed(seed = seed)
   }
   imputedData <- NULL
@@ -216,7 +216,7 @@ plssemBOOTMI_PS <- function(model, data, ..., m = 5, miArgs = list(),
                             seed = NULL, level = 0.95) {
   CALL <- match.call()
   dots <- list(...)
-  if (!is.null(seed) & !missing(seed)) {
+  if (!is.null(seed) && !missing(seed)) {
     set.seed(seed = seed)
   }
 
@@ -274,8 +274,8 @@ plssemBOOTMI_PS <- function(model, data, ..., m = 5, miArgs = list(),
     fit$PooledMI
   }
 
-  if (!is.null(bootArgs) & !missing(bootArgs)) {
-    if (bootArgs$parallel != "no" & bootArgs$ncpus > 1)
+  if (!is.null(bootArgs) && !missing(bootArgs)) {
+    if (bootArgs$parallel != "no" && bootArgs$ncpus > 1)
       verbose <- FALSE
   }
   boot_fit <- list()
@@ -306,7 +306,7 @@ plssemWGT_BOOTMI <- function(model, data, ..., m = 5, miArgs = list(),
                              level = 0.95) {
   CALL <- match.call()
   dots <- list(...)
-  if (!is.null(seed) & !missing(seed)) {
+  if (!is.null(seed) && !missing(seed)) {
     set.seed(seed = seed)
   }
 
@@ -316,7 +316,7 @@ plssemWGT_BOOTMI <- function(model, data, ..., m = 5, miArgs = list(),
 
   boot_i <- 0
   wgts <- numeric(csemArgs$.R)
-  bootstrap_mi <- function(data, indices, mipkg, miargs, miruns, csemmodel, csemargs, verb) {
+  w_bootstrap_mi <- function(data, indices, mipkg, miargs, miruns, csemmodel, csemargs, verb) {
     boot_i <<- boot_i + 1
     if (verb)
       cat(paste0("  - bootstrap sample ", boot_i, "\n"))
@@ -368,7 +368,7 @@ plssemWGT_BOOTMI <- function(model, data, ..., m = 5, miArgs = list(),
   }
 
   boot_fit <- list()
-  bootListCall <- list(boot::boot, data = data, statistic = bootstrap_mi,
+  bootListCall <- list(boot::boot, data = data, statistic = w_bootstrap_mi,
     R = csemArgs$.R, mipkg = miPackage, miargs = miArgs, miruns = m,
     csemmodel = model, csemargs = csemArgs, verb = FALSE)
   bootListCall <- c(bootListCall, bootArgs)

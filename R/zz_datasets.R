@@ -41,8 +41,6 @@
 #'                    and the sense of loyalty.}
 #' }
 #' 
-#' 
-#' 
 #' @source The \href{https://github.com/gastonstat/plspm/}{plspm} package (version  0.4.9). 
 #' Original source according to \pkg{plspm}:
 #' "Laboratory of Information Analysis and Modeling (LIAM). 

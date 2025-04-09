@@ -5,7 +5,7 @@ extract_results <- function(res, approach, type = "path", what = "est", simplify
   if (!(what == "est" | what == "vcov" | what == "sd" | what == "ci")) {
     stop("the requested results are not available.")
   }
-  if (what == "vcov" & simplify) {
+  if (what == "vcov" && simplify) {
     simplify <- FALSE
   }
 
@@ -78,7 +78,7 @@ aggregate_results <- function(res, true_coefs = NULL, methods = "all", qual_meas
     out <- cbind(out, rowMeans(res_est), rowMeans(res_sd), rowMeans(res_ci[, , 1]), rowMeans(res_ci[, , 2]))
     colnames(out) <- out_cn
 
-    if (!is.null(true_coefs) & !missing(true_coefs) & !any(is.na(true_coefs))) {
+    if (!is.null(true_coefs) && !missing(true_coefs) && !any(is.na(true_coefs))) {
       out_cn <- c(colnames(out), paste0(qual_meas, "_", meth))
       for (qual in qual_meas) {
         qual_res <- switch(qual,
@@ -93,7 +93,7 @@ aggregate_results <- function(res, true_coefs = NULL, methods = "all", qual_meas
     }
   }
   attr(out, "methods") <- methods
-  if (!is.null(true_coefs) & !missing(true_coefs) & !any(is.na(true_coefs))) {
+  if (!is.null(true_coefs) && !missing(true_coefs) && !any(is.na(true_coefs))) {
     attr(out, "qual_meas") <- qual_meas
   }
 

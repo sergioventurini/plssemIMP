@@ -14,17 +14,10 @@ library(tidyverse)
 # eta3 =~ 0.7*y31 + 0.8*y32 + 0.7*y33
 # eta4 =~ 0.7*y41 + 0.7*y42 + 0.6*y43
 # '
-# mean <- csem_to_mean(model)
-# cn <- rownames(mean)
-# sigma <- diag(length(cn))
-# sigma1 <- matrix(c(1, .4, .3, .4, 1, .5, .3, .5, 1), nrow = 3)
-# sigma2 <- matrix(c(1, .1, .2, .1, 1, .2, .2, .2, 1), nrow = 3)
-# sigma3 <- matrix(c(1, .7, .5, .7, 1, .6, .5, .6, 1), nrow = 3)
-# sigma4 <- matrix(c(1, .1, .2, .1, 1, .2, .2, .2, 1), nrow = 3)
-# sigma[1:3, 1:3] <- sigma1
-# sigma[4:6, 4:6] <- sigma2
-# sigma[7:9, 7:9] <- sigma3
-# sigma[10:12, 10:12] <- sigma4
+# csem_model <- cSEM::parseModel(model)
+# mean <- rep(0, length(csem_model$indicators))
+# sigma <- generate_vcov(model)
+# cn <- csem_model$indicators
 # argsCD <- list(method = "norm", mean = mean, sigma = sigma, cn = cn)
 
 # (2) multivariate non-normal data (Vale-Maurelli approach)
@@ -39,17 +32,10 @@ library(tidyverse)
 # eta3 =~ 0.7*y31 + 0.8*y32 + 0.7*y33
 # eta4 =~ 0.7*y41 + 0.7*y42 + 0.6*y43
 # '
-# mean <- csem_to_mean(model)
-# cn <- rownames(mean)
-# sigma <- diag(length(cn))
-# sigma1 <- matrix(c(1, .4, .3, .4, 1, .5, .3, .5, 1), nrow = 3)
-# sigma2 <- matrix(c(1, .1, .2, .1, 1, .2, .2, .2, 1), nrow = 3)
-# sigma3 <- matrix(c(1, .7, .5, .7, 1, .6, .5, .6, 1), nrow = 3)
-# sigma4 <- matrix(c(1, .1, .2, .1, 1, .2, .2, .2, 1), nrow = 3)
-# sigma[1:3, 1:3] <- sigma1
-# sigma[4:6, 4:6] <- sigma2
-# sigma[7:9, 7:9] <- sigma3
-# sigma[10:12, 10:12] <- sigma4
+# csem_model <- cSEM::parseModel(model)
+# mean <- rep(0, length(csem_model$indicators))
+# sigma <- generate_vcov(model)
+# cn <- csem_model$indicators
 # skew <- rep(c(1.5, 1.5, 0.5, 0), 3)
 # kurt <- rep(c(3.75, 3.5, 0.5, 3), 3)
 # argsCD <- list(method = "vm", mean = mean, sigma = sigma,
@@ -135,14 +121,14 @@ res <- run_sims(runs = nruns,
                 argscSEM = argscSEM,
                 argsBOOT = list(parallel = ifelse(.Platform$OS.type == "unix", "multicore", "snow"),
                                 ncpus = parallel::detectCores()),
-                verbose = TRUE, boot_mi = "bootmi", level = conflev,
+                verbose = TRUE, boot_mi = "miboot", level = conflev,
                 meanimp = TRUE, knnimp = TRUE, argsKNN = list(k = c(5, 7)),
                 listwise = TRUE, fulloriginal = TRUE,
                 seed = 1406)
 
-## aggregate all results
+## aggregate results
 res_df <- aggregate_results(res, true_coefs = true_coefs,
                             methods = c("pmm", "listwise", "fulloriginal"),
                             qual_meas = c("PB", "CR"))
-## plot the results
+## plot results
 plot_results(res, true_coefs = true_coefs, methods = "pmm", values = c("est", "sd"))

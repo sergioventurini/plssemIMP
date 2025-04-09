@@ -15,7 +15,6 @@
 #' The main functions included in the package are:
 #' * \code{\link{make_missing}()}
 #'
-#' @useDynLib plssemMI, .registration = TRUE
 #' @import stats
 #' @import utils
 #' @importFrom magrittr %>%

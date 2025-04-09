@@ -1,17 +1,17 @@
 bibentry(bibtype = "Article",
-  title        = "Computing the Exact Distributions of Some Functions of the Ordered Multinomial Counts: The {XOMultinom} Package in {R}",
+  title        = "Multiple imputation for partial least squares structural equation models (PLS-SEM): A comparative analysis through simulations",
   author       = c(person(given = "Sergio",
                           family = "Venturini",
                           email = "sergio.venturini@unicatt.it"),
-                   person(given = "Marco",
-                          family = "Bonetti",
-                          email = "marco.bonetti@unibocconi.it")),
-  journal      = "Journal of Statistical Software",
-  year         = "2024",
+                   person(given = "Mehmet",
+                          family = "Mehmetoglu",
+                          email = "mehmet.mehmetoglu@ntnu.no")),
+  journal      = "XXX",
+  year         = "2025",
   volume       = "XX",
   number       = "XX",
   pages        = "1--XX",
   doi          = "(to appear)",
-  header       = "To cite XOMultinom in publications use:"
+  header       = "To cite plssemMI in publications use:"
 )
 
