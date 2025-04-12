@@ -18,7 +18,7 @@ run_sims <- function(
   nCD <- argsCD$n
   methodCD <- argsCD$method
   pkgCD <- argsCD$pkg
-  argsCD <- setdiff(argsCD, list(methodCD, pkgCD))
+  argsCD <- argsCD[setdiff(names(argsCD), c("method", "pkg", "n"))]
   propMM <- argsMM$prop
   mechMM <- argsMM$mech
   methodMM <- argsMM$method
