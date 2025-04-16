@@ -11,20 +11,15 @@ make_missing <- function(data, prop = 0.5, method = "ampute", mech = "MCAR", mis
       freq = freq, mech = mech, weights = weights, type = type)$amp
   }
   else if (method == "raw") {
-    if (mech == "MCAR") {
-      n <- nrow(data)
-      p <- ncol(data)
-      for (j in 1:p) {
-        rx <- rbinom(n, 1, prop)
-        data_amp <- data
-        data_amp[rx == 0, j] <- NA
+    if (is.null(missArgs$R))
+      stop("when using 'raw' to generate missing values, the response indicator R must be provided.")
+    R <- missArgs$R
+    data_amp <- data
+    for (i in 1:nrow(data)) {
+      for (j in 1:ncol(data)) {
+        if (R[i, j])
+          data_amp[i, j] <- NA
       }
-    }
-    else if (mech == "MAR") {
-      # [[TODO]]
-    }
-    else {
-      stop("the specified missing mechanism is not available.")
     }
   }
   else {
