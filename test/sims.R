@@ -103,6 +103,12 @@ if (argsCD$method == "model") {
 ## perform imputation analysis
 nruns <- 100
 nsample <- 1e3
+miss_prop <- 0.5
+mice_patt <- NULL
+mice_freq <- NULL
+mice_weights <- NULL
+mice_cont <- TRUE
+mice_odds <- NULL
 nimp <- 5
 nboot <- 200
 conflev <- 0.95
@@ -115,8 +121,12 @@ argscSEM <- list(.disattenuate = TRUE,
                  .eval_plan = ifelse(.Platform$OS.type == "unix", "multicore", "multisession"))
 res <- run_sims(runs = nruns,
                 argsCD = argsCD,
-                argsMM = list(prop = .5, mech = "MAR", method = "ampute"),
-                argsMI = list(m = nimp, methods = c("pmm", "norm"), pkg = "mice",
+                argsMM = list(prop = miss_prop, mech = "MAR", method = "ampute",
+                              patterns = mice_patt, freq = mice_freq,
+                              weights = mice_weights, cont = mice_cont,
+                              odds = mice_odds),
+                argsMI = list(m = nimp, pkg = "mice",
+                              methods = c("pmm", "norm", "rf"),
                               model = model),  # WE ARE USING THE SAME MODEL AS IN THE DGP!
                 argscSEM = argscSEM,
                 argsBOOT = list(parallel = ifelse(.Platform$OS.type == "unix", "multicore", "snow"),
@@ -128,7 +138,8 @@ res <- run_sims(runs = nruns,
 
 ## aggregate results
 res_df <- aggregate_results(res, true_coefs = true_coefs,
-                            methods = c("pmm", "listwise", "fulloriginal"),
+                            methods = c("pmm", "rf", "listwise", "fulloriginal"),
                             qual_meas = c("PB", "CR"))
 ## plot results
 plot_results(res, true_coefs = true_coefs, methods = "pmm", values = c("est", "sd"))
+plot_results(res, true_coefs = true_coefs, methods = "rf", values = "est")

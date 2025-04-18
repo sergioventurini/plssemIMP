@@ -6,9 +6,12 @@ make_missing <- function(data, prop = 0.5, method = "ampute", mech = "MCAR", mis
     freq <- missArgs$freq
     weights <- missArgs$weights
     type <- missArgs$type
+    cont <- missArgs$cont
+    odds <- missArgs$odds
     data_mat <- as.matrix(data)
     data_amp <- mice::ampute(data = data_mat, prop = prop, patterns = patterns,
-      freq = freq, mech = mech, weights = weights, type = type)$amp
+      freq = freq, mech = mech, weights = weights, type = type, cont = cont,
+      odds = odds)$amp
   }
   else if (method == "raw") {
     if (is.null(missArgs$R))

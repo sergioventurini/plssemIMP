@@ -37,6 +37,13 @@ run_sims <- function(
       stop("the number of datasets provided is smaller than the number of runs.")
   }
 
+  meth_robust <- c("gamlssBI", "gamlssGA", "gamlssJSU", "gamlssNO",
+                   "gamlssPO", "gamlssTF", "gamlssZIBI", "gamlssZIP")
+  if (any(methodsMI %in% meth_robust) &&
+      !"package:ImputeRobust" %in% search()) {
+    suppressMessages(require("ImputeRobust", quietly = TRUE))
+  }
+
   res_all <- res <- run_seeds <- list()
   for (run in 1:runs) {
     run_seeds[[run]] <- .Random.seed
@@ -62,6 +69,7 @@ run_sims <- function(
     ## STEP 3: perform multiple imputation & bootstrap
     res <- list()
     for (methMI in methodsMI) {
+      miArgs <- c(method = methMI, argsMI[setdiff(names(argsMI), c("methods", "m", "pkg", "model"))])
       if (verbose)
         cat(paste0("  - multiple imputation package/method: ", pkgMI, "/", methMI, "\n"))
       if (boot_mi == "miboot") {
@@ -74,8 +82,7 @@ run_sims <- function(
           warning("the .resample_method option has been set to 'bootstrap'.")
         }
         res[[methMI]] <- plssemMIBOOT(model = modelMI, data = dat, m = mMI,
-                                      miArgs = list(method = methMI),
-                                      miPackage = pkgMI, csemArgs = argscSEM,
+                                      miArgs = miArgs, miPackage = pkgMI, csemArgs = argscSEM,
                                       verbose = verbose, seed = NULL, level = level)
       }
       else if (boot_mi == "bootmi") {
@@ -84,10 +91,9 @@ run_sims <- function(
           warning("the .resample_method option has been set to 'none'.")
         }
         res[[methMI]] <- plssemBOOTMI(model = modelMI, data = dat, m = mMI,
-                                      miArgs = list(method = methMI),
-                                      miPackage = pkgMI, csemArgs = argscSEM,
-                                      bootArgs = argsBOOT, verbose = verbose,
-                                      seed = NULL, level = level)
+                                      miArgs = miArgs, miPackage = pkgMI,
+                                      csemArgs = argscSEM, bootArgs = argsBOOT,
+                                      verbose = verbose, seed = NULL, level = level)
       }
       else if (boot_mi == "miboot_pooled") {
         if (is.null(argscSEM$.resample_method)) {
@@ -99,9 +105,9 @@ run_sims <- function(
           warning("the .resample_method option has been set to 'bootstrap'.")
         }
         res[[methMI]] <- plssemMIBOOT_PS(model = modelMI, data = dat, m = mMI,
-                                         miArgs = list(method = methMI),
-                                         miPackage = pkgMI, csemArgs = argscSEM,
-                                         verbose = verbose, seed = NULL, level = level)
+                                         miArgs = miArgs, miPackage = pkgMI,
+                                         csemArgs = argscSEM, verbose = verbose,
+                                         seed = NULL, level = level)
       }
       else if (boot_mi == "bootmi_pooled") {
         if (!is.null(argscSEM$.resample_method) && argscSEM$.resample_method != "none") {
@@ -109,10 +115,9 @@ run_sims <- function(
           warning("the .resample_method option has been set to 'none'.")
         }
         res[[methMI]] <- plssemBOOTMI_PS(model = modelMI, data = dat, m = mMI,
-                                         miArgs = list(method = methMI),
-                                         miPackage = pkgMI, csemArgs = argscSEM,
-                                         bootArgs = argsBOOT, verbose = verbose,
-                                         seed = NULL, level = level)
+                                         miArgs = miArgs, miPackage = pkgMI,
+                                         csemArgs = argscSEM, bootArgs = argsBOOT,
+                                         verbose = verbose, seed = NULL, level = level)
       }
       else if (boot_mi == "weighted_bootmi") {
         if (!is.null(argscSEM$.resample_method) && argscSEM$.resample_method != "none") {
@@ -124,10 +129,9 @@ run_sims <- function(
           warning("the weighted version of 'bootmi' can't use parallel computation and it will take longer.")
         }
         res[[methMI]] <- plssemWGT_BOOTMI(model = modelMI, data = dat, m = mMI,
-                                          miArgs = list(method = methMI),
-                                          miPackage = pkgMI, csemArgs = argscSEM,
-                                          bootArgs = argsBOOT, verbose = verbose,
-                                          seed = NULL, level = level)
+                                          miArgs = miArgs, miPackage = pkgMI,
+                                          csemArgs = argscSEM, bootArgs = argsBOOT,
+                                          verbose = verbose, seed = NULL, level = level)
       }
       else {
         stop("the selected bootstrap/multiple imputation approach is not available.")
