@@ -1,4 +1,4 @@
-meanimp <- function(data, csemArgs = list(), verbose = FALSE, level = 0.95, ...) {
+meanimp <- function(model, data, csemArgs = list(), verbose = FALSE, level = 0.95, ...) {
   CALL <- match.call()
   dots <- list(...)
   imputedData <- NULL
@@ -104,7 +104,7 @@ knn_impute <- function(X, k = 5, ties = TRUE) {
   Ximp
 }
 
-knnimp <- function(data, csemArgs = list(), k = 5, method = "euclidean",
+knnimp <- function(model, data, csemArgs = list(), k = 5, method = "euclidean",
   verbose = FALSE, level = 0.95, ...) {
   CALL <- match.call()
   dots <- list(...)

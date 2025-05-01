@@ -9,7 +9,7 @@
   # quiets concerns of R CMD check re: the .'s that appear in pipelines
   # (see https://github.com/tidyverse/magrittr/issues/29)
   if (getRversion() >= "2.15.1") {
-    utils::globalVariables(c(".", ""))
+    utils::globalVariables(c(".", "", "estimate", "param", "x"))
   }
   .plssemMIEnv$path.to.me <- tools::file_path_as_absolute(lib)
 }

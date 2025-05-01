@@ -1,15 +1,15 @@
 Package: plssemMI
 Type: Package
 Title: Multiple imputation for partial least squares structural equation models (PLS-SEM)
-Version: 0.1.5
-Date: 2025-04-18
+Version: 0.1.6
+Date: 2025-05-01
 Authors@R: c(
   person("Sergio", "Venturini", role=c("aut", "cre"), email = "sergio.venturini@unicatt.it"),
   person("Mehmet", "Mehmetoglu", role=c("ctb"), email = "mehmet.mehmetoglu@ntnu.no"))
 Description: Functions that implements different missing data imputation approaches
     for partial least squares structural equation models (PLS-SEM).
 Maintainer: Sergio Venturini <sergio.venturini@unicatt.it>
-License: GPL-3
+License: file LICENSE
 NeedsCompilation: no
 Repository: CRAN
 LazyData: TRUE
@@ -31,7 +31,8 @@ Imports:
     simstandard,
     stats4 (>= 3.6.2),
     tools,
-    tidyr
+    tidyr,
+    tidyselect
 Suggests:
     knitr,
     testthat
@@ -42,6 +43,5 @@ Depends:
     utils
 BugReports: https://github.com/sergioventurini/plssemMI/issues
 Encoding: UTF-8
-VignetteBuilder: knitr
 RoxygenNote: 7.3.2
 Roxygen: list(markdown = TRUE)

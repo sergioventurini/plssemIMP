@@ -11,7 +11,7 @@ status](https://www.r-pkg.org/badges/version/plssemMI)](https://cran.r-project.o
 
 ## Overview
 
-###### Current release: 0.1.2
+###### Current release: 0.1.6
 ###### R version required: at least 3.6.0
 `R` package that implements different missing data imputation approaches
 for partial least squares structural equation models (PLS-SEM).

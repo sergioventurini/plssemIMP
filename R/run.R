@@ -146,8 +146,9 @@ run_sims <- function(
     if (meanimp) {
       if (verbose)
         cat("  - single imputation method: mean\n")
-      res[["mean"]] <- meanimp(data = dat, csemArgs = argscSEM,
-                               verbose = verbose, level = level)
+      res[["mean"]] <- meanimp(model = modelMI, data = dat,
+                               csemArgs = argscSEM, verbose = verbose,
+                               level = level)
     }
 
     # k-nearest neighbor imputation
@@ -167,10 +168,12 @@ run_sims <- function(
       for (j in 1:length(argsKNN$k)) {
         if (verbose)
           cat(paste0("  - single imputation method: k-nearest neighbors (k = ", argsKNN$k[j], ")\n"))
-        res[[paste0("knn", argsKNN$k[j])]] <- knnimp(data = dat, csemArgs = argscSEM,
+        res[[paste0("knn", argsKNN$k[j])]] <- knnimp(model = modelMI, data = dat,
+                                                     csemArgs = argscSEM,
                                                      k = argsKNN$k[j],
                                                      method = argsKNN$method[1],
-                                                     verbose = verbose, level = level)
+                                                     verbose = verbose,
+                                                     level = level)
       }
     }
 
@@ -178,16 +181,18 @@ run_sims <- function(
     if (listwise) {
       if (verbose)
         cat("  - complete-case (listwise deletion) analysis\n")
-      res[["listwise"]] <- fulldata(data = na.omit(dat), csemArgs = argscSEM,
-                                    verbose = verbose, level = level)
+      res[["listwise"]] <- fulldata(model = modelMI, data = na.omit(dat),
+                                    csemArgs = argscSEM, verbose = verbose,
+                                    level = level)
     }
 
     # perform analysis on original full data (i.e. before generating NAs)
     if (fulloriginal) {
       if (verbose)
         cat("  - analysis on the original full data (i.e. before generating NAs)\n")
-      res[["fulloriginal"]] <- fulldata(data = dat_orig, csemArgs = argscSEM,
-                                        verbose = verbose, level = level)
+      res[["fulloriginal"]] <- fulldata(model = modelMI, data = dat_orig,
+                                        csemArgs = argscSEM, verbose = verbose,
+                                        level = level)
     }
 
     methods_names <- methodsMI

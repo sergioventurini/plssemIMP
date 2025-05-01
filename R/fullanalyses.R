@@ -1,4 +1,4 @@
-fulldata <- function(data, csemArgs = list(), verbose = FALSE, level = 0.95, ...) {
+fulldata <- function(model, data, csemArgs = list(), verbose = FALSE, level = 0.95, ...) {
   CALL <- match.call()
   dots <- list(...)
 

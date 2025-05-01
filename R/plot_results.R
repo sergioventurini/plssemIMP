@@ -30,18 +30,18 @@ plot_results <- function(res, true_coefs = NULL, methods = "all", values = "est"
       rownames(res_load_toplot) <- paste0("lambda", 1:nrow(res_load_toplot))
       res_toplot <- rbind(res_path_toplot, res_load_toplot)
       if (!is.null(true_coefs) & !missing(true_coefs) & !any(is.na(true_coefs))) {
-        res_toplot <- data.frame(param = rownames(res_toplot), res_toplot, true_coefs)
+        res_toplot <- data.frame("param" = rownames(res_toplot), res_toplot, true_coefs)
       }
       else {
-        res_toplot <- data.frame(param = rownames(res_toplot), res_toplot)
+        res_toplot <- data.frame("param" = rownames(res_toplot), res_toplot)
       }
       df_long <- res_toplot %>%
-        tidyr::pivot_longer(cols = starts_with("run_"),
+        tidyr::pivot_longer(cols = tidyselect::starts_with("run_"),
                             names_to = "simulation",
                             values_to = "estimate")
 
       if (val == "est") {
-        constants <- data.frame(param = rownames(res_toplot), true_coefs = true_coefs)
+        constants <- data.frame("param" = rownames(res_toplot), true_coefs = true_coefs)
         constants <- constants %>%
           dplyr::mutate(x = as.numeric(factor(param)))
       }

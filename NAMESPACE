@@ -2,6 +2,7 @@
 
 export(generate_cor)
 export(generate_vcov)
+export(make_missing)
 exportPattern("^[[:alpha:]]+")
 import(stats)
 import(utils)
