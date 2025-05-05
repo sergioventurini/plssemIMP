@@ -15,17 +15,22 @@ run_sims <- function(
   datalist = NULL) {
 
   CALL <- match.call()
+
   nCD <- argsCD$n
   methodCD <- argsCD$method
   pkgCD <- argsCD$pkg
   argsCD <- argsCD[setdiff(names(argsCD), c("method", "pkg", "n"))]
+
   propMM <- argsMM$prop
   mechMM <- argsMM$mech
   methodMM <- argsMM$method
+  argsMM <- argsMM[setdiff(names(argsMM), c("prop", "mech", "method"))]
+
   methodsMI <- argsMI$methods
   mMI <- argsMI$m
   pkgMI <- argsMI$pkg
   modelMI <- argsMI$model
+  argsMI <- argsMI[setdiff(names(argsMI), c("methods", "m", "pkg", "model"))]
 
   if (!is.null(seed)) {
     set.seed(seed = seed)
@@ -63,13 +68,13 @@ run_sims <- function(
     
     ## STEP 2: generate missing data
     dat_miss <- make_missing(dat, prop = propMM, mech = mechMM, method = methodMM,
-      missArgs = argsMM[setdiff(names(argsMM), c("prop", "mech", "method"))])
+      missArgs = argsMM)
     dat <- as.data.frame(dat_miss$amputed)
     
     ## STEP 3: perform multiple imputation & bootstrap
     res <- list()
     for (methMI in methodsMI) {
-      miArgs <- c(method = methMI, argsMI[setdiff(names(argsMI), c("methods", "m", "pkg", "model"))])
+      miArgs <- c(method = methMI, argsMI)
       if (verbose)
         cat(paste0("  - multiple imputation package/method: ", pkgMI, "/", methMI, "\n"))
       if (boot_mi == "miboot") {

@@ -1,8 +1,8 @@
 Package: plssemMI
 Type: Package
-Title: Multiple imputation for partial least squares structural equation models (PLS-SEM)
-Version: 0.1.6
-Date: 2025-05-01
+Title: Multiple imputation for partial least squares structural equation modelling (PLS-SEM)
+Version: 0.1.7
+Date: 2025-05-05
 Authors@R: c(
   person("Sergio", "Venturini", role=c("aut", "cre"), email = "sergio.venturini@unicatt.it"),
   person("Mehmet", "Mehmetoglu", role=c("ctb"), email = "mehmet.mehmetoglu@ntnu.no"))
@@ -19,7 +19,6 @@ Imports:
     cSEM.DGP,
     gamlss,
     ggplot2 (>= 3.5.1),
-    ggrepel (>= 0.9.6),
     graphics,
     Hmisc,
     ImputeRobust,
