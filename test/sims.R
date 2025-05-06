@@ -117,7 +117,7 @@ argscSEM <- list(.disattenuate = TRUE,
                  .R = nboot,
                  .tolerance = 1e-07,
                  .resample_method = "bootstrap",
-                 .handle_inadmissibles = "replace",
+                 .handle_inadmissibles = "drop",
                  .eval_plan = ifelse(.Platform$OS.type == "unix", "multicore", "multisession"))
 res <- run_sims(runs = nruns,
                 argsCD = argsCD,
@@ -134,12 +134,13 @@ res <- run_sims(runs = nruns,
                 verbose = TRUE, boot_mi = "miboot", level = conflev,
                 meanimp = TRUE, knnimp = TRUE, argsKNN = list(k = c(5, 7)),
                 listwise = TRUE, fulloriginal = TRUE,
-                seed = 1406)
+                seed = 1404)
 
 ## aggregate results
 res_df <- aggregate_results(res, true_coefs = true_coefs,
                             methods = c("pmm", "rf", "listwise", "fulloriginal"),
                             qual_meas = c("PB", "CR"))
+
 ## plot results
 plot_results(res, true_coefs = true_coefs, methods = "pmm", values = c("est", "sd"))
-plot_results(res, true_coefs = true_coefs, methods = "rf", values = "est")
+plot_results(res, true_coefs = true_coefs, methods = "rf", values = "est", ylim = c(-.1, 1.6))

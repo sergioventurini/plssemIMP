@@ -1,9 +1,9 @@
-plot_results <- function(res, true_coefs = NULL, methods = "all", values = "est") {
+plot_results <- function(res, true_coefs = NULL, methods = "all", values = "est", ylim = NULL) {
   if (is.null(true_coefs) | missing(true_coefs)) {
     true_coefs <- NA
   }
 
-  nruns <- length(res) - 3
+  nruns <- length(res) - 4
   nmeth <- length(res[[1]]) - 2
   methnm <- names(res[[1]])[1:(length(res[[1]]) - 2)]
   if (is.null(methods) | any(methods == "all")) {
@@ -52,6 +52,14 @@ plot_results <- function(res, true_coefs = NULL, methods = "all", values = "est"
         ggplot2::labs(title = "Boxplot of MI estimates by parameter",
                       x = "parameter",
                       y = ifelse(val == "est", "estimate", "std. dev."))
+      if (!is.null(ylim) & length(ylim) == 2) {
+        if (ylim[1] < ylim[2]) {
+          out <- out + ggplot2::coord_cartesian(ylim = ylim)
+        }
+        else {
+          stop("the vertical axis lower limit must be smaller than the upper one.")
+        }
+      }
       if (!is.null(true_coefs) & !missing(true_coefs) & !any(is.na(true_coefs)) & val == "est") {
         out <- out +
           ggplot2::geom_segment(data = constants,

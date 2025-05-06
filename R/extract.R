@@ -12,19 +12,19 @@ extract_results <- function(res, approach, type = "path", what = "est", simplify
   if (what == "ci") {
     get_str <- paste0(type, "_", c("lower", "upper"))
     npar <- length(res[[1]][[approach]][[get_str[1]]])
-    out <- array(NA, dim = c(npar, length(res) - 3, 2))
+    out <- array(NA, dim = c(npar, length(res) - 4, 2))
     for (i in 1:length(get_str)) {
-      out[, , i] <- sapply(res[1:(length(res) - 3)],
+      out[, , i] <- sapply(res[1:(length(res) - 4)],
         function(x, method, str) x[[method]][[str[i]]],
         method = approach, str = get_str,
         simplify = simplify, USE.NAMES = TRUE)
     }
-    dimnames(out)[[2]] <- paste0("run_", 1:(length(res) - 3))
+    dimnames(out)[[2]] <- paste0("run_", 1:(length(res) - 4))
     dimnames(out)[[3]] <- c("lower", "upper")
   }
   else {
     get_str <- paste0(type, "_", what)
-    out <- sapply(res[1:(length(res) - 3)],
+    out <- sapply(res[1:(length(res) - 4)],
       function(x, method, str) x[[method]][[str]],
       method = approach, str = get_str,
       simplify = simplify, USE.NAMES = TRUE)
@@ -40,7 +40,7 @@ aggregate_results <- function(res, true_coefs = NULL, methods = "all", qual_meas
     warning("the quality measures are not available.")
   }
 
-  nruns <- length(res) - 3
+  nruns <- length(res) - 4
   nmeth <- length(res[[1]]) - 2
   methnm <- names(res[[1]])[1:(length(res[[1]]) - 2)]
   if (is.null(methods) | any(methods == "all")) {
@@ -70,12 +70,13 @@ aggregate_results <- function(res, true_coefs = NULL, methods = "all", qual_meas
     res_est <- rbind(res_path_est, res_load_est)
     res_sd <- rbind(res_path_sd, res_load_sd)
     res_ci <- array(NA, dim = c(dim(res_est), 2))
-    res_ci[, , 1] <- rbind(res_path_ci[, , 1], res_load_ci[, , 1])
-    res_ci[, , 2] <- rbind(res_path_ci[, , 2], res_load_ci[, , 2])
+    res_ci[, , 1] <- rbind(as.matrix(res_path_ci[, , 1]), as.matrix(res_load_ci[, , 1]))
+    res_ci[, , 2] <- rbind(as.matrix(res_path_ci[, , 2]), as.matrix(res_load_ci[, , 2]))
     # if (length(true_coefs) != length(res_est))
     #   stop("the number of true coefficient values does not match with that of the results.")
     out_cn <- c(colnames(out), paste0(meth, c("_est", "_sd", "_lwr", "_upr")))
-    out <- cbind(out, rowMeans(res_est), rowMeans(res_sd), rowMeans(res_ci[, , 1]), rowMeans(res_ci[, , 2]))
+    out <- cbind(out, rowMeans(res_est), rowMeans(res_sd), rowMeans(as.matrix(res_ci[, , 1])),
+                 rowMeans(as.matrix(res_ci[, , 2])))
     colnames(out) <- out_cn
 
     if (!is.null(true_coefs) && !missing(true_coefs) && !any(is.na(true_coefs))) {
@@ -102,7 +103,7 @@ aggregate_results <- function(res, true_coefs = NULL, methods = "all", qual_meas
 
 extract_data <- function(res, full = TRUE) {
   out <- list()
-  for (i in 1:(length(res) - 3)) {
+  for (i in 1:(length(res) - 4)) {
     if (full) {
       out[[i]] <- res[[i]][["dat_orig"]]
     }

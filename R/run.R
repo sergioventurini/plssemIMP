@@ -15,6 +15,8 @@ run_sims <- function(
   datalist = NULL) {
 
   CALL <- match.call()
+  arg_names <- names(formals(sys.function()))
+  args_list <- mget(arg_names, envir = environment(), inherits = FALSE)
 
   nCD <- argsCD$n
   methodCD <- argsCD$method
@@ -215,6 +217,7 @@ run_sims <- function(
   res_all$start_seed <- start_seed
   res_all$run_seeds <- run_seeds
   res_all$call <- CALL
+  res_all$args <- args_list
 
   res_all
 }

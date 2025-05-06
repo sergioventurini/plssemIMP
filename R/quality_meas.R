@@ -7,13 +7,13 @@ percentbias <- function(estimates, true) {
 }
 
 coveragerate <- function(ciestimates, true) {
-  lower <- ciestimates[, , 1]
-  upper <- ciestimates[, , 2]
+  lower <- as.matrix(ciestimates[, , 1])
+  upper <- as.matrix(ciestimates[, , 2])
   rowMeans(lower < true & true < upper)
 }
 
 averagewidth <- function(ciestimates) {
-  rowMeans(ciestimates[, , 2] - ciestimates[, , 1])
+  rowMeans(as.matrix(ciestimates[, , 2]) - as.matrix(ciestimates[, , 1]))
 }
 
 rmse <- function(estimates, true) {

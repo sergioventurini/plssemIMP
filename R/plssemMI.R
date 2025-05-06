@@ -26,11 +26,8 @@ plssemMIBOOT <- function(model, data, ..., m = 5, miArgs = list(),
     imputeCall <- c(list(mice::mice, data = data, m = m, 
                          diagnostics = FALSE, printFlag = FALSE), miArgs)
     miceOut <- eval(as.call(imputeCall))
-    imputedData <- list()
-    for (i in 1:m) {
-      imputedData[[i]] <- mice::complete(data = miceOut, 
-                                         action = i, include = FALSE)
-    }
+    imputedData <- lapply(as.list(1:m), function(i) mice::complete(data = miceOut,
+                          action = i, include = FALSE))
   }
   else stop("currently plssemMIBOOT() only supports imputation by Amelia or mice.")
 
@@ -106,11 +103,8 @@ plssemBOOTMI <- function(model, data, ..., m = 5, miArgs = list(),
       imputeCall <- c(list(mice::mice, data = boot_sample, m = miruns, 
                            diagnostics = FALSE, printFlag = FALSE), miargs)
       miceOut <- eval(as.call(imputeCall))
-      imputedData <- list()
-      for (i in 1:m) {
-        imputedData[[i]] <- mice::complete(data = miceOut, 
-                                           action = i, include = FALSE)
-      }
+      imputedData <- lapply(as.list(1:m), function(i) mice::complete(data = miceOut,
+                            action = i, include = FALSE))
     }
     else stop("currently plssemBOOTMI() only supports imputation by Amelia or mice.")
 
@@ -183,11 +177,8 @@ plssemMIBOOT_PS <- function(model, data, ..., m = 5, miArgs = list(),
     imputeCall <- c(list(mice::mice, data = data, m = m, 
                          diagnostics = FALSE, printFlag = FALSE), miArgs)
     miceOut <- eval(as.call(imputeCall))
-    imputedData <- list()
-    for (i in 1:m) {
-      imputedData[[i]] <- mice::complete(data = miceOut, 
-                                         action = i, include = FALSE)
-    }
+    imputedData <- lapply(as.list(1:m), function(i) mice::complete(data = miceOut,
+                          action = i, include = FALSE))
   }
   else stop("currently plssemMIBOOT_PS() only supports imputation by Amelia or mice.")
 
@@ -246,11 +237,8 @@ plssemBOOTMI_PS <- function(model, data, ..., m = 5, miArgs = list(),
       imputeCall <- c(list(mice::mice, data = boot_sample, m = miruns, 
                            diagnostics = FALSE, printFlag = FALSE), miargs)
       miceOut <- eval(as.call(imputeCall))
-      imputedData <- list()
-      for (i in 1:m) {
-        imputedData[[i]] <- mice::complete(data = miceOut, 
-                                           action = i, include = FALSE)
-      }
+      imputedData <- lapply(as.list(1:m), function(i) mice::complete(data = miceOut,
+                            action = i, include = FALSE))
     }
     else stop("currently plssemBOOTMI_PS() only supports imputation by Amelia or mice.")
 
@@ -338,11 +326,8 @@ plssemWGT_BOOTMI <- function(model, data, ..., m = 5, miArgs = list(),
       imputeCall <- c(list(mice::mice, data = boot_sample, m = miruns, 
                            diagnostics = FALSE, printFlag = FALSE), miargs)
       miceOut <- eval(as.call(imputeCall))
-      imputedData <- list()
-      for (i in 1:m) {
-        imputedData[[i]] <- mice::complete(data = miceOut, 
-                                           action = i, include = FALSE)
-      }
+      imputedData <- lapply(as.list(1:m), function(i) mice::complete(data = miceOut,
+                            action = i, include = FALSE))
     }
     else stop("currently plssemWGT_BOOTMI() only supports imputation by Amelia or mice.")
 
