@@ -127,7 +127,9 @@ res <- run_sims(runs = nruns,
                               odds = mice_odds),
                 argsMI = list(m = nimp, pkg = "mice",
                               methods = c("pmm", "norm", "rf"),
-                              model = model),  # WE ARE USING THE SAME MODEL AS IN THE DGP!
+                              model = model,  # WE ARE USING THE SAME MODEL AS IN THE DGP!
+                              maxit = 10,
+                              blocks = make_blocks(model)),
                 argscSEM = argscSEM,
                 argsBOOT = list(parallel = ifelse(.Platform$OS.type == "unix", "multicore", "snow"),
                                 ncpus = parallel::detectCores()),
