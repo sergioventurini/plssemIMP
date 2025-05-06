@@ -1,8 +1,8 @@
-Package: plssemMI
+Package: plssemIMP
 Type: Package
 Title: Multiple imputation for partial least squares structural equation modelling (PLS-SEM)
-Version: 0.1.7
-Date: 2025-05-05
+Version: 0.1.8
+Date: 2025-05-06
 Authors@R: c(
   person("Sergio", "Venturini", role=c("aut", "cre"), email = "sergio.venturini@unicatt.it"),
   person("Mehmet", "Mehmetoglu", role=c("ctb"), email = "mehmet.mehmetoglu@ntnu.no"))
@@ -40,7 +40,7 @@ Depends:
     R (>= 3.6.0),
     stats,
     utils
-BugReports: https://github.com/sergioventurini/plssemMI/issues
+BugReports: https://github.com/sergioventurini/plssemIMP/issues
 Encoding: UTF-8
 RoxygenNote: 7.3.2
 Roxygen: list(markdown = TRUE)

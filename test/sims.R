@@ -1,4 +1,4 @@
-library(plssemMI)
+library(plssemIMP)
 library(tidyverse)
 
 ## setup the data creation

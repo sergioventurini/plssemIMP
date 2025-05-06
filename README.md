@@ -1,11 +1,11 @@
-# plssemMI
+# plssemIMP
 
 <!-- badges: start -->
 
 [![CRAN
-status](https://www.r-pkg.org/badges/version/plssemMI)](https://cran.r-project.org/package=plssemMI)
-[![](http://cranlogs.r-pkg.org/badges/grand-total/plssemMI?color=blue)](https://cran.r-project.org/package=plssemMI)
-[![Travis build status](https://travis-ci.org/sergioventurini/plssemMI.svg?branch=master)](https://travis-ci.org/sergioventurini/plssemMI)
+status](https://www.r-pkg.org/badges/version/plssemIMP)](https://cran.r-project.org/package=plssemIMP)
+[![](http://cranlogs.r-pkg.org/badges/grand-total/plssemIMP?color=blue)](https://cran.r-project.org/package=plssemIMP)
+[![Travis build status](https://travis-ci.org/sergioventurini/plssemIMP.svg?branch=master)](https://travis-ci.org/sergioventurini/plssemIMP)
 
 <!-- badges: end -->
 
@@ -29,12 +29,12 @@ Then, the easiest way to get the package is to install it from GitHub:
 
 ``` r
 # install.packages("devtools")
-devtools::install_github("sergioventurini/plssemMI")
+devtools::install_github("sergioventurini/plssemIMP")
 ```
 
-See the main help page of the package by executing `?plssemMI` or run any of
+See the main help page of the package by executing `?plssemIMP` or run any of
 the demos available in the package by executing the code
-`demo(demo_name, package = "plssemMI")`.
+`demo(demo_name, package = "plssemIMP")`.
 
 ## Authors
 Sergio Venturini, Department of Economic and Social Sciences, Università Cattolica del Sacro Cuore, Cremona, Italy

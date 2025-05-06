@@ -8,3 +8,7 @@ booststrap vs. multiple imputation --> see discussion in chatgpt
 VIM and naniar packages for visualization of missing values:
 - http://statistikat.github.io/VIM/
 - https://naniar.njtierney.com/index.html
+
+covsim: An R Package for Simulating Non-Normal Data for Structural Equation Models Using Copulas
+
+simsem

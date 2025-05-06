@@ -1,5 +1,5 @@
 # Package-wide global variables
-.plssemMIEnv <- new.env()
+.plssemIMPEnv <- new.env()
 
 #' @exportPattern "^[[:alpha:]]+"
 #'
@@ -11,12 +11,12 @@
   if (getRversion() >= "2.15.1") {
     utils::globalVariables(c(".", "", "estimate", "param", "x"))
   }
-  .plssemMIEnv$path.to.me <- tools::file_path_as_absolute(lib)
+  .plssemIMPEnv$path.to.me <- tools::file_path_as_absolute(lib)
 }
 
 .onAttach <- function(libname, pkgname) {
   packageStartupMessage(sprintf("Package %s (%s) loaded.\nTo cite, type citation(\"%s\")",
     pkgname, utils::packageDescription(pkgname)$Version, pkgname))
   # packageStartupMessage("Caution: ", pkgname, " is under active developement! Breaking changes may occur in the future.")
-    packageStartupMessage("Please report improvements and bugs to: https://github.com/sergioventurini/plssemMI/issues")
+    packageStartupMessage("Please report improvements and bugs to: https://github.com/sergioventurini/plssemIMP/issues")
 }

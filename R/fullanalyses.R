@@ -3,7 +3,7 @@ fulldata <- function(model, data, csemArgs = list(), verbose = FALSE, level = 0.
   dots <- list(...)
 
   if (missing(data)) {
-    stop("a dataset is needed to run the plssemMIBOOT() function.")
+    stop("a dataset is needed to run the fulldata() function.")
   }
 
   csemListCall <- list(cSEM::csem, .model = model, .data = data)

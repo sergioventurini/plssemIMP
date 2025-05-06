@@ -166,7 +166,7 @@ plssemMIBOOT_PS <- function(model, data, ..., m = 5, miArgs = list(),
   imputedData <- NULL
 
   if (missing(data)) {
-    stop("a dataset is needed to run the plssemMIBOOT() function.")
+    stop("a dataset is needed to run the plssemMIBOOT_PS() function.")
   }
 
   if (miPackage[1] == "Amelia") {
@@ -221,7 +221,7 @@ plssemBOOTMI_PS <- function(model, data, ..., m = 5, miArgs = list(),
   }
 
   if (missing(data)) {
-    stop("a dataset is needed to run the plssemBOOTMI() function.")
+    stop("a dataset is needed to run the plssemBOOTMI_PS() function.")
   }
 
   boot_i <- 0
@@ -311,7 +311,7 @@ plssemWGT_BOOTMI <- function(model, data, ..., m = 5, miArgs = list(),
   }
 
   if (missing(data)) {
-    stop("a dataset is needed to run the plssemBOOTMI() function.")
+    stop("a dataset is needed to run the plssemWGT_BOOTMI() function.")
   }
 
   boot_i <- 0
@@ -344,7 +344,7 @@ plssemWGT_BOOTMI <- function(model, data, ..., m = 5, miArgs = list(),
                                            action = i, include = FALSE)
       }
     }
-    else stop("currently plssemBOOTMI() only supports imputation by Amelia or mice.")
+    else stop("currently plssemWGT_BOOTMI() only supports imputation by Amelia or mice.")
 
     csemListCall <- list(cSEM::csem, .model = csemmodel, .data = imputedData)
     csemListCall <- c(csemListCall, csemargs)

@@ -4,7 +4,7 @@ meanimp <- function(model, data, csemArgs = list(), verbose = FALSE, level = 0.9
   imputedData <- NULL
 
   if (missing(data)) {
-    stop("a dataset is needed to run the plssemMIBOOT() function.")
+    stop("a dataset is needed to run the meanimp() function.")
   }
 
   imputedData <- lapply(data, function(x) {
@@ -111,7 +111,7 @@ knnimp <- function(model, data, csemArgs = list(), k = 5, method = "euclidean",
   imputedData <- NULL
 
   if (missing(data)) {
-    stop("a dataset is needed to run the plssemMIBOOT() function.")
+    stop("a dataset is needed to run the knnimp() function.")
   }
 
   imputedData <- knn_impute(data, k = k)

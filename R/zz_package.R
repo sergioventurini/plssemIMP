@@ -1,14 +1,14 @@
-#' plssemMI: a package 
+#' plssemIMP: a package 
 #'
 #' _PACKAGE
 #'
-#' @name plssemMI-package
-#' @aliases plssemMI-pkg
-#' @aliases plssemMI-p
-#' @aliases plssemMI
+#' @name plssemIMP-package
+#' @aliases plssemIMP-pkg
+#' @aliases plssemIMP-p
+#' @aliases plssemIMP
 #'
 #' @description
-#' The \pkg{plssemMI} package contains functions that implements 
+#' The \pkg{plssemIMP} package contains functions that implements 
 #' different missing data imputation approaches for partial least
 #' squares structural equation models (PLS-SEM).
 #'
