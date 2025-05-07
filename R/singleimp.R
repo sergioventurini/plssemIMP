@@ -53,7 +53,7 @@ meanimp <- function(model, data, csemArgs = list(), verbose = FALSE, level = 0.9
   fit$pooled
 }
 
-knn_impute <- function(X, k = 5, ties = TRUE) {
+knn_impute <- function(X, k = 5, ties = TRUE, FUN = median) {
   n <- nrow(X)
   Q <- ncol(X)
  
@@ -92,7 +92,7 @@ knn_impute <- function(X, k = 5, ties = TRUE) {
     for (q in 1:Q) {
       if (is.na(X[incomplete_idx[i], q])) {
         if (is.numeric(X[, q])) {
-          Ximp[incomplete_idx[i], q] <- mean(Xsub[, q], na.rm = TRUE)
+          Ximp[incomplete_idx[i], q] <- do.call(FUN, list(x = Xsub[, q], na.rm = TRUE))
         }
         else {
           Ximp[incomplete_idx[i], q] <- mode_function(Xsub[, q], na.rm = TRUE)

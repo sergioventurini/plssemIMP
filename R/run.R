@@ -28,7 +28,12 @@ run_sims <- function(
   methodMM <- argsMM$method
   argsMM <- argsMM[setdiff(names(argsMM), c("prop", "mech", "method"))]
 
-  methodsMI <- argsMI$methods
+  if (is.null(argsMI$methods)) {
+    methodsMI <- "pmm"
+  }
+  else {
+    methodsMI <- argsMI$methods
+  }
   mMI <- argsMI$m
   pkgMI <- argsMI$pkg
   modelMI <- argsMI$model
