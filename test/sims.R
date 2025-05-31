@@ -88,21 +88,33 @@ eta2 =~ 0.7*y21 + 0.7*y22 + 0.9*y23
 eta3 =~ 0.7*y31 + 0.8*y32 + 0.7*y33
 eta4 =~ 0.7*y41 + 0.7*y42 + 0.6*y43
 '
+model <- '
+# Structural model
+eta2 ~ 0.2*eta1
+eta3 ~ 0.4*eta1 + 0.35*eta2
+
+# Measurement model
+eta1 <~ 0.7*y11 + 0.9*y12 + 0.8*y13
+eta2 =~ 0.7*y21 + 0.7*y22 + 0.9*y23
+eta3 =~ 0.9*y31 + 0.8*y32 + 0.7*y33
+
+# Within block indicator correlation of eta1
+y11 ~~ 0.2*y12
+y11 ~~ 0.3*y13
+y12 ~~ 0.5*y13
+'
 argsCD <- list(method = "model", pkg = "cSEM.DGP", model = model)
 
 if (argsCD$method == "model") {
-  true_model <- cSEM::parseModel(model)
-  true_path <- colSums(true_model$structural2)
-  true_path <- true_path[true_path != 0]
-  true_load <- colSums(true_model$measurement2)
-  true_coefs <- c(true_path, true_load)
+  true_coefs <- model_coef_vec(model, estimates = FALSE)
 } else {
   true_coefs <- NULL
 }
 
 ## perform imputation analysis
-nruns <- 100
+nruns <- 10
 nsample <- 1e3
+miss_mech <- "MAR"
 miss_prop <- 0.5
 mice_patt <- NULL
 mice_freq <- NULL
@@ -121,12 +133,12 @@ argscSEM <- list(.disattenuate = TRUE,
                  .eval_plan = ifelse(.Platform$OS.type == "unix", "multicore", "multisession"))
 res <- run_sims(runs = nruns,
                 argsCD = argsCD,
-                argsMM = list(prop = miss_prop, mech = "MAR", method = "ampute",
+                argsMM = list(prop = miss_prop, mech = miss_mech, method = "ampute",
                               patterns = mice_patt, freq = mice_freq,
                               weights = mice_weights, cont = mice_cont,
                               odds = mice_odds),
                 argsMI = list(m = nimp, pkg = "mice",
-                              methods = c("pmm", "norm", "rf"),
+                              methods = c("norm", "pmm", "rf"),
                               model = model,  # WE ARE USING THE SAME MODEL AS IN THE DGP!
                               maxit = 10,
                               blocks = make_blocks(model)),
@@ -144,5 +156,6 @@ res_df <- aggregate_results(res, true_coefs = true_coefs,
                             qual_meas = c("PB", "CR"))
 
 ## plot results
-plot_results(res, true_coefs = true_coefs, methods = "pmm", values = c("est", "sd"))
-plot_results(res, true_coefs = true_coefs, methods = "rf", values = "est", ylim = c(-.1, 1.6))
+plot_results(res, true_coefs = true_coefs, methods = "pmm", values = "est")
+plot_results(res, true_coefs = true_coefs, methods = "rf", values = "est")
+# plot_results(res, true_coefs = true_coefs, methods = "rf", values = "sd", ylim = c(-.1, 1.6))

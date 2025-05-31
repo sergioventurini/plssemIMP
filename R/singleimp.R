@@ -22,16 +22,8 @@ meanimp <- function(model, data, csemArgs = list(), verbose = FALSE, level = 0.9
   csemListCall <- c(csemListCall, csemArgs)
   fit <- list()
   fit$FitList <- list(suppressWarnings(eval(as.call(csemListCall))))
-  fit$PathList <- lapply(fit$FitList,
-    function(x) {
-      path <- x$Estimates$Path_estimates
-      path <- path[, colSums(path) != 0]
-      colSums(path)
-    })
-  fit$LoadingList <- lapply(fit$FitList,
-    function(x) {
-      colSums(x$Estimates$Loading_estimates)
-    })
+  fit$PathList <- lapply(fit$FitList, model_coef_vec, estimates = TRUE, what = "path")
+  fit$LoadingList <- lapply(fit$FitList, model_coef_vec, estimates = TRUE, what = "load")
   fit$PathVCOVList <- lapply(fit$FitList,
     function(x) {
       cov(x$Estimates$Estimates_resample$Estimates1$Path_estimates$Resampled)
@@ -120,16 +112,8 @@ knnimp <- function(model, data, csemArgs = list(), k = 5, method = "euclidean",
   csemListCall <- c(csemListCall, csemArgs)
   fit <- list()
   fit$FitList <- list(suppressWarnings(eval(as.call(csemListCall))))
-  fit$PathList <- lapply(fit$FitList,
-    function(x) {
-      path <- x$Estimates$Path_estimates
-      path <- path[, colSums(path) != 0]
-      colSums(path)
-    })
-  fit$LoadingList <- lapply(fit$FitList,
-    function(x) {
-      colSums(x$Estimates$Loading_estimates)
-    })
+  fit$PathList <- lapply(fit$FitList, model_coef_vec, estimates = TRUE, what = "path")
+  fit$LoadingList <- lapply(fit$FitList, model_coef_vec, estimates = TRUE, what = "load")
   fit$PathVCOVList <- lapply(fit$FitList,
     function(x) {
       cov(x$Estimates$Estimates_resample$Estimates1$Path_estimates$Resampled)

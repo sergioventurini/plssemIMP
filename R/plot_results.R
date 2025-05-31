@@ -25,9 +25,9 @@ plot_results <- function(res, true_coefs = NULL, methods = "all", values = "est"
   for (meth in methods) {
     for (val in values) {
       res_path_toplot <- extract_results(res, approach = meth, type = "path", what = val)
-      rownames(res_path_toplot) <- paste0("eta", 1:nrow(res_path_toplot))
+      # rownames(res_path_toplot) <- paste0("eta", 1:nrow(res_path_toplot))
       res_load_toplot <- extract_results(res, approach = meth, type = "load", what = val)
-      rownames(res_load_toplot) <- paste0("lambda", 1:nrow(res_load_toplot))
+      # rownames(res_load_toplot) <- paste0("lambda", 1:nrow(res_load_toplot))
       res_toplot <- rbind(res_path_toplot, res_load_toplot)
       if (!is.null(true_coefs) & !missing(true_coefs) & !any(is.na(true_coefs))) {
         res_toplot <- data.frame("param" = rownames(res_toplot), res_toplot, true_coefs)
@@ -49,9 +49,11 @@ plot_results <- function(res, true_coefs = NULL, methods = "all", values = "est"
       out <- ggplot2::ggplot(df_long, ggplot2::aes(x = param, y = estimate, fill = param)) +
         ggplot2::geom_boxplot(alpha = 0.7) +
         ggplot2::theme_minimal() +
-        ggplot2::labs(title = "Boxplot of MI estimates by parameter",
+        ggplot2::labs(title = paste0("Boxplot of MI estimates for ", meth, " method"),
                       x = "parameter",
-                      y = ifelse(val == "est", "estimate", "std. dev."))
+                      y = ifelse(val == "est", "estimate", "std. dev.")) +
+        ggplot2::theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+                       plot.title = element_text(hjust = 0.5, size = 16, face = "bold"))
       if (!is.null(ylim) & length(ylim) == 2) {
         if (ylim[1] < ylim[2]) {
           out <- out + ggplot2::coord_cartesian(ylim = ylim)

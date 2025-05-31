@@ -1,3 +1,42 @@
+model_coef_vec <- function(res, estimates = FALSE, what = "all") {
+  if (!estimates) {
+    parsed_model <- cSEM::parseModel(res)
+
+    # path coefficients
+    path_vec <- matrix2vec(parsed_model$structural2, names = TRUE)
+    path_vec <- path_vec[path_vec != 0, ]
+
+    # loadings
+    load_vec <- matrix2vec(parsed_model$measurement2, names = TRUE)
+    load_vec <- load_vec[load_vec != 0, ]
+  }
+  else {
+    # path coefficients
+    path_vec <- matrix2vec(res$Estimates$Path_estimates, names = TRUE)
+    path_vec <- path_vec[path_vec != 0, ]
+
+    # loadings
+    load_vec <- matrix2vec(res$Estimates$Loading_estimates, names = TRUE)
+    load_vec <- load_vec[load_vec != 0, ]
+  }
+
+  # combine
+  if (what == "all") {
+    coef_vec <- c(path_vec, load_vec)
+  }
+  else if (what == "path") {
+    coef_vec <- path_vec
+  }
+  else if (what == "load") {
+    coef_vec <- load_vec
+  }
+  else {
+    stop("the objects to combine are not available.")
+  }
+
+  coef_vec
+}
+
 csem_model_coef <- function(model) {
   model_parsed <- cSEM::parseModel(model)
   eta_endo <- model_parsed$cons_endo

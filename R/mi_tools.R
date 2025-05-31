@@ -154,8 +154,7 @@ poolMI <- function(fitMI, boot_mi, level = 0.95, weights = NULL) {
 csem_combine <- function(csem_res, level = 0.95) {
   alpha <- 1 - level
 
-  path_est <- colSums(csem_res$Estimates$Path_estimates)
-  path_est <- path_est[which(path_est != 0)]
+  path_est <- model_coef_vec(csem_res, estimates = TRUE, what = "path")
   path_boot <- csem_res$Estimates$Estimates_resample$Estimates1$Path_estimates$Resampled
   path_vcov <- cov(path_boot)
   path_sd <- sqrt(diag(path_vcov))
@@ -163,7 +162,7 @@ csem_combine <- function(csem_res, level = 0.95) {
   path_lwr <- path_ci[1, ]
   path_upr <- path_ci[2, ]
   
-  load_est <- colSums(csem_res$Estimates$Loading_estimates)
+  load_est <- model_coef_vec(csem_res, estimates = TRUE, what = "load")
   load_boot <- csem_res$Estimates$Estimates_resample$Estimates1$Loading_estimates$Resampled
   load_vcov <- cov(load_boot)
   load_sd <- sqrt(diag(load_vcov))

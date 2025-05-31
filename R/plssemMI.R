@@ -38,12 +38,15 @@ plssemMIBOOT <- function(model, data, ..., m = 5, miArgs = list(),
   fit$PathList <- lapply(fit$FitList,
     function(x) {
       path <- x$Estimates$Path_estimates
-      path <- path[, colSums(path) != 0]
-      colSums(path)
+      path <- matrix2vec(path, names = TRUE)
+      rownames(path) <- gsub("eta", "gamma", gsub("_eta", "", rownames(path)))
+      path[path != 0, ]
     })
   fit$LoadingList <- lapply(fit$FitList,
     function(x) {
-      colSums(x$Estimates$Loading_estimates)
+      load <- colSums(x$Estimates$Loading_estimates)
+      names(load) <- gsub("y", "lambda", names(load))
+      load
     })
   fit$PathVCOVList <- lapply(fit$FitList,
     function(x) {
@@ -115,12 +118,15 @@ plssemBOOTMI <- function(model, data, ..., m = 5, miArgs = list(),
     fit$PathList <- lapply(fit$FitList,
       function(x) {
         path <- x$Estimates$Path_estimates
-        path <- path[, colSums(path) != 0]
-        colSums(path)
+        path <- matrix2vec(path, names = TRUE)
+        rownames(path) <- gsub("eta", "gamma", gsub("_eta", "", rownames(path)))
+        path[path != 0, ]
       })
     fit$LoadingList <- lapply(fit$FitList,
       function(x) {
-        colSums(x$Estimates$Loading_estimates)
+        load <- colSums(x$Estimates$Loading_estimates)
+        names(load) <- gsub("y", "lambda", names(load))
+        load
       })
     fit$convList <- lapply(fit$FitList, function(x) x$Information$Weight_info$Convergence_status)
     if (!all(unlist(fit$convList))) 
@@ -249,9 +255,11 @@ plssemBOOTMI_PS <- function(model, data, ..., m = 5, miArgs = list(),
     fit$ParamList <- lapply(fit$FitList,
       function(x) {
         path <- x$Estimates$Path_estimates
-        path <- path[, colSums(path) != 0]
-        path <- colSums(path)
+        path <- matrix2vec(path, names = TRUE)
+        rownames(path) <- gsub("eta", "gamma", gsub("_eta", "", rownames(path)))
+        path <- path[path != 0, ]
         load <- colSums(x$Estimates$Loading_estimates)
+        names(load) <- gsub("y", "lambda", names(load))
         c(path, load)
       })
     fit$PooledMI <- do.call(cbind, fit$ParamList)
@@ -338,12 +346,15 @@ plssemWGT_BOOTMI <- function(model, data, ..., m = 5, miArgs = list(),
     fit$PathList <- lapply(fit$FitList,
       function(x) {
         path <- x$Estimates$Path_estimates
-        path <- path[, colSums(path) != 0]
-        colSums(path)
+        path <- matrix2vec(path, names = TRUE)
+        rownames(path) <- gsub("eta", "gamma", gsub("_eta", "", rownames(path)))
+        path[path != 0, ]
       })
     fit$LoadingList <- lapply(fit$FitList,
       function(x) {
-        colSums(x$Estimates$Loading_estimates)
+        load <- colSums(x$Estimates$Loading_estimates)
+        names(load) <- gsub("y", "lambda", names(load))
+        load
       })
     fit$convList <- lapply(fit$FitList, function(x) x$Information$Weight_info$Convergence_status)
     if (!all(unlist(fit$convList))) 
