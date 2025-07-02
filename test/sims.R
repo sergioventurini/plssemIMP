@@ -115,7 +115,7 @@ if (argsCD$method == "model") {
 nruns <- 10
 nsample <- 1e3
 miss_mech <- "MAR"
-miss_prop <- 0.5
+miss_prop <- 0.5  # prop of incomplete cases (not overall prop of missings)
 mice_patt <- NULL
 mice_freq <- NULL
 mice_weights <- NULL
@@ -145,10 +145,10 @@ res <- run_sims(runs = nruns,
                 argscSEM = argscSEM,
                 argsBOOT = list(parallel = ifelse(.Platform$OS.type == "unix", "multicore", "snow"),
                                 ncpus = parallel::detectCores()),
-                verbose = TRUE, boot_mi = "miboot", level = conflev,
+                verbose = TRUE, boot_mi = "weighted_bootmi", level = conflev,
                 meanimp = TRUE, knnimp = TRUE, argsKNN = list(k = c(5, 7)),
                 listwise = TRUE, fulloriginal = TRUE,
-                seed = 1404)
+                seed = 1404, wgtType = "rows")
 
 ## aggregate results
 res_df <- aggregate_results(res, true_coefs = true_coefs,

@@ -1,11 +1,12 @@
 run_sims <- function(
-  runs = 10,
+  runs = 1e2,
   argsCD = list(n = 1e3, method = "model", pkg = "cSEM.DGP"),
   argsMM = list(prop = .5, mech = "MCAR", method = "ampute"),
   argsMI = list(m = 5, methods = c("pmm", "norm"), pkg = "mice"),
   argscSEM = list(),
   argsBOOT = list(),
-  boot_mi = "miboot", # accepted values are 'miboot', 'bootmi', 'miboot_pooled', 'bootmi_pooled' and 'weighted_bootmi'
+  boot_mi = "miboot",  # accepted values are 'miboot', 'bootmi', 'miboot_pooled', 'bootmi_pooled' and 'weighted_bootmi'
+  wgtType = "rows",    # accepted values are 'rows' and 'all'
   verbose = FALSE,
   seed = NULL,
   level = 0.95,
@@ -143,7 +144,8 @@ run_sims <- function(
         res[[methMI]] <- plssemWGT_BOOTMI(model = modelMI, data = dat, m = mMI,
                                           miArgs = miArgs, miPackage = pkgMI,
                                           csemArgs = argscSEM, bootArgs = argsBOOT,
-                                          verbose = verbose, seed = NULL, level = level)
+                                          verbose = verbose, seed = NULL, level = level,
+                                          wgtType = wgtType)
       }
       else {
         stop("the selected bootstrap/multiple imputation approach is not available.")

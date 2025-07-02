@@ -88,14 +88,20 @@ poolMI <- function(fitMI, boot_mi, level = 0.95, weights = NULL) {
     load <- fitMI$PooledSample[, (npath + 1):ncol(fitMI$PooledSample)]
     alpha <- (1 - level)
 
-    path_est <- colMeans(path)
+    # path_est <- colMeans(path)
+    path_est <- rubin_est(fitMI$PathList)
+    idx <- which(path_est != 0)
+    path_est <- path_est[idx]
     path_vcov <- var(path)
     path_sd <- sqrt(diag(path_vcov))
     path_ci <- apply(path, 2, quantile, probs = c(alpha/2, 1 - alpha/2))
     path_lwr <- path_ci[1, ]
     path_upr <- path_ci[2, ]
 
-    load_est <- colMeans(load)
+    # load_est <- colMeans(load)
+    load_est <- rubin_est(fitMI$LoadingList)
+    idx <- which(load_est != 0)
+    load_est <- load_est[idx]
     load_vcov <- var(load)
     load_sd <- sqrt(diag(load_vcov))
     load_ci <- apply(load, 2, quantile, probs = c(alpha/2, 1 - alpha/2))

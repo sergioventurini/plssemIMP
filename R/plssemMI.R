@@ -39,7 +39,7 @@ plssemMIBOOT <- function(model, data, ..., m = 5, miArgs = list(),
     function(x) {
       path <- x$Estimates$Path_estimates
       path <- matrix2vec(path, names = TRUE)
-      rownames(path) <- gsub("eta", "gamma", gsub("_eta", "", rownames(path)))
+      rownames(path) <- gsub("eta", "gamma", gsub("_eta", "", rownames(path), fixed = TRUE), fixed = TRUE)
       path[path != 0, ]
     })
   fit$LoadingList <- lapply(fit$FitList,
@@ -63,7 +63,7 @@ plssemMIBOOT <- function(model, data, ..., m = 5, miArgs = list(),
   fit$imputeCall <- imputeCall
   fit$convList <- lapply(fit$FitList, function(x) x$Information$Weight_info$Convergence_status)
   if (!all(unlist(fit$convList))) 
-    warning("the model did not converge for any imputed data sets.")
+    warning("the model did not converge for all imputed data sets.")
   fit$dots <- dots
   fit$nobs <- nrow(data)
   fit$pooled <- poolMI(fit, boot_mi = "miboot", level = level)
@@ -119,7 +119,7 @@ plssemBOOTMI <- function(model, data, ..., m = 5, miArgs = list(),
       function(x) {
         path <- x$Estimates$Path_estimates
         path <- matrix2vec(path, names = TRUE)
-        rownames(path) <- gsub("eta", "gamma", gsub("_eta", "", rownames(path)))
+        rownames(path) <- gsub("eta", "gamma", gsub("_eta", "", rownames(path), fixed = TRUE), fixed = TRUE)
         path[path != 0, ]
       })
     fit$LoadingList <- lapply(fit$FitList,
@@ -130,7 +130,7 @@ plssemBOOTMI <- function(model, data, ..., m = 5, miArgs = list(),
       })
     fit$convList <- lapply(fit$FitList, function(x) x$Information$Weight_info$Convergence_status)
     if (!all(unlist(fit$convList))) 
-      warning("the model did not converge for any imputed datasets.")
+      warning("the model did not converge for all imputed data sets.")
     fit$DataList <- imputedData
     c(rubin_est(fit$PathList), rubin_est(fit$LoadingList))
   }
@@ -192,6 +192,19 @@ plssemMIBOOT_PS <- function(model, data, ..., m = 5, miArgs = list(),
   csemListCall <- c(csemListCall, csemArgs)
   fit <- list()
   fit$FitList <- suppressWarnings(eval(as.call(csemListCall)))
+  fit$PathList <- lapply(fit$FitList,
+    function(x) {
+      path <- x$Estimates$Path_estimates
+      path <- matrix2vec(path, names = TRUE)
+      rownames(path) <- gsub("eta", "gamma", gsub("_eta", "", rownames(path), fixed = TRUE), fixed = TRUE)
+      path[path != 0, ]
+    })
+  fit$LoadingList <- lapply(fit$FitList,
+    function(x) {
+      load <- colSums(x$Estimates$Loading_estimates)
+      names(load) <- gsub("y", "lambda", names(load))
+      load
+    })
   fit$PooledSample <- pool_samples(fit)
   fit$DataList <- imputedData
   fit$model <- model
@@ -200,7 +213,7 @@ plssemMIBOOT_PS <- function(model, data, ..., m = 5, miArgs = list(),
   fit$imputeCall <- imputeCall
   fit$convList <- lapply(fit$FitList, function(x) x$Information$Weight_info$Convergence_status)
   if (!all(unlist(fit$convList))) 
-    warning("the model did not converge for any imputed data sets.")
+    warning("the model did not converge for all imputed data sets.")
   fit$dots <- dots
   fit$nobs <- nrow(data)
   fit$pooled <- poolMI(fit, boot_mi = "miboot_pooled", level = level)
@@ -256,7 +269,7 @@ plssemBOOTMI_PS <- function(model, data, ..., m = 5, miArgs = list(),
       function(x) {
         path <- x$Estimates$Path_estimates
         path <- matrix2vec(path, names = TRUE)
-        rownames(path) <- gsub("eta", "gamma", gsub("_eta", "", rownames(path)))
+        rownames(path) <- gsub("eta", "gamma", gsub("_eta", "", rownames(path), fixed = TRUE), fixed = TRUE)
         path <- path[path != 0, ]
         load <- colSums(x$Estimates$Loading_estimates)
         names(load) <- gsub("y", "lambda", names(load))
@@ -265,7 +278,7 @@ plssemBOOTMI_PS <- function(model, data, ..., m = 5, miArgs = list(),
     fit$PooledMI <- do.call(cbind, fit$ParamList)
     fit$convList <- lapply(fit$FitList, function(x) x$Information$Weight_info$Convergence_status)
     if (!all(unlist(fit$convList))) 
-      warning("the model did not converge for any imputed datasets.")
+      warning("the model did not converge for all imputed data sets.")
     fit$DataList <- imputedData
     fit$PooledMI
   }
@@ -299,7 +312,7 @@ plssemBOOTMI_PS <- function(model, data, ..., m = 5, miArgs = list(),
 plssemWGT_BOOTMI <- function(model, data, ..., m = 5, miArgs = list(),
                              csemArgs = list(), miPackage = "mice",
                              bootArgs = list(), verbose = FALSE, seed = NULL,
-                             level = 0.95) {
+                             level = 0.95, wgtType = "rows") {
   CALL <- match.call()
   dots <- list(...)
   if (!is.null(seed) && !missing(seed)) {
@@ -312,12 +325,17 @@ plssemWGT_BOOTMI <- function(model, data, ..., m = 5, miArgs = list(),
 
   boot_i <- 0
   wgts <- numeric(csemArgs$.R)
-  w_bootstrap_mi <- function(data, indices, mipkg, miargs, miruns, csemmodel, csemargs, verb) {
+  w_bootstrap_mi <- function(data, indices, mipkg, miargs, miruns, csemmodel, csemargs, verb, wtype) {
     boot_i <<- boot_i + 1
     if (verb)
       cat(paste0("  - bootstrap sample ", boot_i, "\n"))
     boot_sample <- data[indices, ]
-    wgts[boot_i] <<- sum(is.na(boot_sample))
+    if (wtype == "rows") {
+      wgts[boot_i] <<- sum(apply(boot_sample, 1, function(x) any(is.na(x))))  # num of rows with at least one missing
+    }
+    else if (wtype == "all") {
+      wgts[boot_i] <<- sum(is.na(boot_sample))                                # overall num of obs that are missing
+    }
 
     imputedData <- NULL
     if (mipkg[1] == "Amelia") {
@@ -347,7 +365,7 @@ plssemWGT_BOOTMI <- function(model, data, ..., m = 5, miArgs = list(),
       function(x) {
         path <- x$Estimates$Path_estimates
         path <- matrix2vec(path, names = TRUE)
-        rownames(path) <- gsub("eta", "gamma", gsub("_eta", "", rownames(path)))
+        rownames(path) <- gsub("eta", "gamma", gsub("_eta", "", rownames(path), fixed = TRUE), fixed = TRUE)
         path[path != 0, ]
       })
     fit$LoadingList <- lapply(fit$FitList,
@@ -358,7 +376,7 @@ plssemWGT_BOOTMI <- function(model, data, ..., m = 5, miArgs = list(),
       })
     fit$convList <- lapply(fit$FitList, function(x) x$Information$Weight_info$Convergence_status)
     if (!all(unlist(fit$convList))) 
-      warning("the model did not converge for any imputed datasets.")
+      warning("the model did not converge for all imputed data sets.")
     fit$DataList <- imputedData
     c(rubin_est(fit$PathList), rubin_est(fit$LoadingList))
   }
@@ -366,11 +384,15 @@ plssemWGT_BOOTMI <- function(model, data, ..., m = 5, miArgs = list(),
   boot_fit <- list()
   bootListCall <- list(boot::boot, data = data, statistic = w_bootstrap_mi,
     R = csemArgs$.R, mipkg = miPackage, miargs = miArgs, miruns = m,
-    csemmodel = model, csemargs = csemArgs, verb = FALSE)
+    csemmodel = model, csemargs = csemArgs, verb = FALSE, wtype = wgtType)
   bootListCall <- c(bootListCall, bootArgs)
   bootRes <- eval(as.call(bootListCall))
-  # wgts <- prod(dim(data))/wgts[-1]
-  wgts <- nrow(data)/wgts[-1]
+  if (wgtType == "rows") {
+    wgts <- nrow(data)/wgts[-1]
+  }
+  else if (wgtType == "all") {
+    wgts <- prod(dim(data))/wgts[-1]
+  }
   boot_fit$BootOrig <- bootRes$t0   # these are the cSEM results on the original dataset after imputation
   boot_fit$BootMatrix <- bootRes$t
   boot_fit$model <- model
