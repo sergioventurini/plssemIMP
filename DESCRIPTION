@@ -1,8 +1,8 @@
 Package: plssemIMP
 Type: Package
 Title: Multiple imputation for partial least squares structural equation modelling (PLS-SEM)
-Version: 0.1.11
-Date: 2025-07-10
+Version: 0.1.14
+Date: 2025-07-14
 Authors@R: c(
   person("Sergio", "Venturini", role=c("aut", "cre"), email = "sergio.venturini@unicatt.it"),
   person("Mehmet", "Mehmetoglu", role=c("ctb"), email = "mehmet.mehmetoglu@ntnu.no"))

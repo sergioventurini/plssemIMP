@@ -4,19 +4,24 @@ meanimp <- function(model, data, csemArgs = list(), verbose = FALSE, level = 0.9
   imputedData <- NULL
 
   if (missing(data)) {
-    stop("a dataset is needed to run the meanimp() function.")
+    stop("a data set is needed to run the meanimp() function.")
   }
 
-  imputedData <- lapply(data, function(x) {
-    if (is.numeric(x)) {
-      x[is.na(x)] <- mean(x[!is.na(x)])
-    }
-    else {
-      x[is.na(x)] <- mode_function(x[!is.na(x)])
-    }
-    x
-  })
-  imputedData <- as.data.frame(imputedData)
+  if (any(is.na(data))) {
+    imputedData <- lapply(data, function(x) {
+      if (is.numeric(x)) {
+        x[is.na(x)] <- mean(x[!is.na(x)])
+      }
+      else {
+        x[is.na(x)] <- mode_function(x[!is.na(x)])
+      }
+      x
+    })
+    imputedData <- as.data.frame(imputedData)
+  }
+  else {
+    imputedData <-  data
+  }
 
   csemListCall <- list(cSEM::csem, .model = model, .data = imputedData)
   csemListCall <- c(csemListCall, csemArgs)
@@ -103,10 +108,15 @@ knnimp <- function(model, data, csemArgs = list(), k = 5, method = "euclidean",
   imputedData <- NULL
 
   if (missing(data)) {
-    stop("a dataset is needed to run the knnimp() function.")
+    stop("a data set is needed to run the knnimp() function.")
   }
 
-  imputedData <- knn_impute(data, k = k)
+  if (any(is.na(data))) {
+    imputedData <- knn_impute(data, k = k)
+  }
+  else {
+    imputedData <-  data
+  }
 
   csemListCall <- list(cSEM::csem, .model = model, .data = imputedData)
   csemListCall <- c(csemListCall, csemArgs)

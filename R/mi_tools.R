@@ -186,10 +186,12 @@ csem_combine <- function(csem_res, level = 0.95) {
 pool_samples <- function(fitMI) {
   pooled_sample <- cbind(fitMI$FitList[[1]]$Estimates$Estimates_resample$Estimates1$Path_estimates$Resampled,
                          fitMI$FitList[[1]]$Estimates$Estimates_resample$Estimates1$Loading_estimates$Resampled)
-  for (i in 2:length(fitMI$FitList)) {
-    tmp <- cbind(fitMI$FitList[[i]]$Estimates$Estimates_resample$Estimates1$Path_estimates$Resampled,
-                 fitMI$FitList[[i]]$Estimates$Estimates_resample$Estimates1$Loading_estimates$Resampled)
-    pooled_sample <- rbind(pooled_sample, tmp)
+  if (length(fitMI$FitList) > 1) {
+    for (i in 2:length(fitMI$FitList)) {
+      tmp <- cbind(fitMI$FitList[[i]]$Estimates$Estimates_resample$Estimates1$Path_estimates$Resampled,
+                   fitMI$FitList[[i]]$Estimates$Estimates_resample$Estimates1$Loading_estimates$Resampled)
+      pooled_sample <- rbind(pooled_sample, tmp)
+    }
   }
 
   pooled_sample

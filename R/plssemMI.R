@@ -12,24 +12,29 @@ plssemMIBOOT <- function(model, data, ..., m = 5, miArgs = list(),
     stop("a dataset is needed to run the plssemMIBOOT() function.")
   }
 
-  if (miPackage[1] == "Amelia") {
-    requireNamespace("Amelia")
-    if (!"package:Amelia" %in% search()) 
-      attachNamespace("Amelia")
-    imputeCall <- c(list(Amelia::amelia, x = data, m = m, p2s = 0), miArgs)
-    imputedData <- unclass(eval(as.call(imputeCall))$imputations)
+  if (any(is.na(data))) {
+    if (miPackage[1] == "Amelia") {
+      requireNamespace("Amelia")
+      if (!"package:Amelia" %in% search()) 
+        attachNamespace("Amelia")
+      imputeCall <- c(list(Amelia::amelia, x = data, m = m, p2s = 0), miArgs)
+      imputedData <- unclass(eval(as.call(imputeCall))$imputations)
+    }
+    else if (miPackage[1] == "mice") {
+      requireNamespace("mice")
+      if (!"package:mice" %in% search()) 
+        attachNamespace("mice")
+      imputeCall <- c(list(mice::mice, data = data, m = m, 
+                           diagnostics = FALSE, printFlag = FALSE), miArgs)
+      miceOut <- eval(as.call(imputeCall))
+      imputedData <- lapply(as.list(1:m), function(i) mice::complete(data = miceOut,
+                            action = i, include = FALSE))
+    }
+    else stop("currently plssemMIBOOT() only supports imputation by Amelia or mice.")
   }
-  else if (miPackage[1] == "mice") {
-    requireNamespace("mice")
-    if (!"package:mice" %in% search()) 
-      attachNamespace("mice")
-    imputeCall <- c(list(mice::mice, data = data, m = m, 
-                         diagnostics = FALSE, printFlag = FALSE), miArgs)
-    miceOut <- eval(as.call(imputeCall))
-    imputedData <- lapply(as.list(1:m), function(i) mice::complete(data = miceOut,
-                          action = i, include = FALSE))
+  else {
+    imputedData <- list(data)
   }
-  else stop("currently plssemMIBOOT() only supports imputation by Amelia or mice.")
 
   csemListCall <- list(cSEM::csem, .model = model, .data = imputedData)
   csemListCall <- c(csemListCall, csemArgs)
@@ -60,7 +65,7 @@ plssemMIBOOT <- function(model, data, ..., m = 5, miArgs = list(),
   fit$model <- model
   fit$call <- CALL
   fit$csemListCall <- csemListCall
-  fit$imputeCall <- imputeCall
+  if (any(is.na(data))) fit$imputeCall <- imputeCall
   fit$convList <- lapply(fit$FitList, function(x) x$Information$Weight_info$Convergence_status)
   if (!all(unlist(fit$convList))) 
     warning("the model did not converge for all imputed data sets.")
@@ -92,24 +97,29 @@ plssemBOOTMI <- function(model, data, ..., m = 5, miArgs = list(),
     boot_sample <- data[indices, ]
 
     imputedData <- NULL
-    if (mipkg[1] == "Amelia") {
-      requireNamespace("Amelia")
-      if (!"package:Amelia" %in% search()) 
-        attachNamespace("Amelia")
-      imputeCall <- c(list(Amelia::amelia, x = boot_sample, m = miruns, p2s = 0), miargs)
-      imputedData <- unclass(eval(as.call(imputeCall))$imputations)
+    if (any(is.na(data))) {
+      if (mipkg[1] == "Amelia") {
+        requireNamespace("Amelia")
+        if (!"package:Amelia" %in% search()) 
+          attachNamespace("Amelia")
+        imputeCall <- c(list(Amelia::amelia, x = boot_sample, m = miruns, p2s = 0), miargs)
+        imputedData <- unclass(eval(as.call(imputeCall))$imputations)
+      }
+      else if (mipkg[1] == "mice") {
+        requireNamespace("mice")
+        if (!"package:mice" %in% search()) 
+          attachNamespace("mice")
+        imputeCall <- c(list(mice::mice, data = boot_sample, m = miruns, 
+                             diagnostics = FALSE, printFlag = FALSE), miargs)
+        miceOut <- eval(as.call(imputeCall))
+        imputedData <- lapply(as.list(1:m), function(i) mice::complete(data = miceOut,
+                              action = i, include = FALSE))
+      }
+      else stop("currently plssemBOOTMI() only supports imputation by Amelia or mice.")
     }
-    else if (mipkg[1] == "mice") {
-      requireNamespace("mice")
-      if (!"package:mice" %in% search()) 
-        attachNamespace("mice")
-      imputeCall <- c(list(mice::mice, data = boot_sample, m = miruns, 
-                           diagnostics = FALSE, printFlag = FALSE), miargs)
-      miceOut <- eval(as.call(imputeCall))
-      imputedData <- lapply(as.list(1:m), function(i) mice::complete(data = miceOut,
-                            action = i, include = FALSE))
-    }
-    else stop("currently plssemBOOTMI() only supports imputation by Amelia or mice.")
+    else {
+      imputedData <- list(data)
+    }    
 
     csemListCall <- list(cSEM::csem, .model = csemmodel, .data = imputedData)
     csemListCall <- c(csemListCall, csemargs)
@@ -169,24 +179,29 @@ plssemMIBOOT_PS <- function(model, data, ..., m = 5, miArgs = list(),
     stop("a dataset is needed to run the plssemMIBOOT_PS() function.")
   }
 
-  if (miPackage[1] == "Amelia") {
-    requireNamespace("Amelia")
-    if (!"package:Amelia" %in% search()) 
-      attachNamespace("Amelia")
-    imputeCall <- c(list(Amelia::amelia, x = data, m = m, p2s = 0), miArgs)
-    imputedData <- unclass(eval(as.call(imputeCall))$imputations)
+  if (any(is.na(data))) {
+    if (miPackage[1] == "Amelia") {
+      requireNamespace("Amelia")
+      if (!"package:Amelia" %in% search()) 
+        attachNamespace("Amelia")
+      imputeCall <- c(list(Amelia::amelia, x = data, m = m, p2s = 0), miArgs)
+      imputedData <- unclass(eval(as.call(imputeCall))$imputations)
+    }
+    else if (miPackage[1] == "mice") {
+      requireNamespace("mice")
+      if (!"package:mice" %in% search()) 
+        attachNamespace("mice")
+      imputeCall <- c(list(mice::mice, data = data, m = m, 
+                           diagnostics = FALSE, printFlag = FALSE), miArgs)
+      miceOut <- eval(as.call(imputeCall))
+      imputedData <- lapply(as.list(1:m), function(i) mice::complete(data = miceOut,
+                            action = i, include = FALSE))
+    }
+    else stop("currently plssemMIBOOT_PS() only supports imputation by Amelia or mice.")
   }
-  else if (miPackage[1] == "mice") {
-    requireNamespace("mice")
-    if (!"package:mice" %in% search()) 
-      attachNamespace("mice")
-    imputeCall <- c(list(mice::mice, data = data, m = m, 
-                         diagnostics = FALSE, printFlag = FALSE), miArgs)
-    miceOut <- eval(as.call(imputeCall))
-    imputedData <- lapply(as.list(1:m), function(i) mice::complete(data = miceOut,
-                          action = i, include = FALSE))
+  else {
+    imputedData <- list(data)
   }
-  else stop("currently plssemMIBOOT_PS() only supports imputation by Amelia or mice.")
 
   csemListCall <- list(cSEM::csem, .model = model, .data = imputedData)
   csemListCall <- c(csemListCall, csemArgs)
@@ -210,7 +225,7 @@ plssemMIBOOT_PS <- function(model, data, ..., m = 5, miArgs = list(),
   fit$model <- model
   fit$call <- CALL
   fit$csemListCall <- csemListCall
-  fit$imputeCall <- imputeCall
+  if (any(is.na(data))) fit$imputeCall <- imputeCall
   fit$convList <- lapply(fit$FitList, function(x) x$Information$Weight_info$Convergence_status)
   if (!all(unlist(fit$convList))) 
     warning("the model did not converge for all imputed data sets.")
@@ -242,24 +257,29 @@ plssemBOOTMI_PS <- function(model, data, ..., m = 5, miArgs = list(),
     boot_sample <- data[indices, ]
 
     imputedData <- NULL
-    if (mipkg[1] == "Amelia") {
-      requireNamespace("Amelia")
-      if (!"package:Amelia" %in% search()) 
-        attachNamespace("Amelia")
-      imputeCall <- c(list(Amelia::amelia, x = boot_sample, m = miruns, p2s = 0), miargs)
-      imputedData <- unclass(eval(as.call(imputeCall))$imputations)
+    if (any(is.na(data))) {
+      if (mipkg[1] == "Amelia") {
+        requireNamespace("Amelia")
+        if (!"package:Amelia" %in% search()) 
+          attachNamespace("Amelia")
+        imputeCall <- c(list(Amelia::amelia, x = boot_sample, m = miruns, p2s = 0), miargs)
+        imputedData <- unclass(eval(as.call(imputeCall))$imputations)
+      }
+      else if (mipkg[1] == "mice") {
+        requireNamespace("mice")
+        if (!"package:mice" %in% search()) 
+          attachNamespace("mice")
+        imputeCall <- c(list(mice::mice, data = boot_sample, m = miruns, 
+                             diagnostics = FALSE, printFlag = FALSE), miargs)
+        miceOut <- eval(as.call(imputeCall))
+        imputedData <- lapply(as.list(1:m), function(i) mice::complete(data = miceOut,
+                              action = i, include = FALSE))
+      }
+      else stop("currently plssemBOOTMI_PS() only supports imputation by Amelia or mice.")
     }
-    else if (mipkg[1] == "mice") {
-      requireNamespace("mice")
-      if (!"package:mice" %in% search()) 
-        attachNamespace("mice")
-      imputeCall <- c(list(mice::mice, data = boot_sample, m = miruns, 
-                           diagnostics = FALSE, printFlag = FALSE), miargs)
-      miceOut <- eval(as.call(imputeCall))
-      imputedData <- lapply(as.list(1:m), function(i) mice::complete(data = miceOut,
-                            action = i, include = FALSE))
+    else {
+      imputedData <- list(data)
     }
-    else stop("currently plssemBOOTMI_PS() only supports imputation by Amelia or mice.")
 
     csemListCall <- list(cSEM::csem, .model = csemmodel, .data = imputedData)
     csemListCall <- c(csemListCall, csemargs)
@@ -338,24 +358,29 @@ plssemWGT_BOOTMI <- function(model, data, ..., m = 5, miArgs = list(),
     }
 
     imputedData <- NULL
-    if (mipkg[1] == "Amelia") {
-      requireNamespace("Amelia")
-      if (!"package:Amelia" %in% search()) 
-        attachNamespace("Amelia")
-      imputeCall <- c(list(Amelia::amelia, x = boot_sample, m = miruns, p2s = 0), miargs)
-      imputedData <- unclass(eval(as.call(imputeCall))$imputations)
+    if (any(is.na(data))) {
+      if (mipkg[1] == "Amelia") {
+        requireNamespace("Amelia")
+        if (!"package:Amelia" %in% search()) 
+          attachNamespace("Amelia")
+        imputeCall <- c(list(Amelia::amelia, x = boot_sample, m = miruns, p2s = 0), miargs)
+        imputedData <- unclass(eval(as.call(imputeCall))$imputations)
+      }
+      else if (mipkg[1] == "mice") {
+        requireNamespace("mice")
+        if (!"package:mice" %in% search()) 
+          attachNamespace("mice")
+        imputeCall <- c(list(mice::mice, data = boot_sample, m = miruns, 
+                             diagnostics = FALSE, printFlag = FALSE), miargs)
+        miceOut <- eval(as.call(imputeCall))
+        imputedData <- lapply(as.list(1:m), function(i) mice::complete(data = miceOut,
+                              action = i, include = FALSE))
+      }
+      else stop("currently plssemWGT_BOOTMI() only supports imputation by Amelia or mice.")
     }
-    else if (mipkg[1] == "mice") {
-      requireNamespace("mice")
-      if (!"package:mice" %in% search()) 
-        attachNamespace("mice")
-      imputeCall <- c(list(mice::mice, data = boot_sample, m = miruns, 
-                           diagnostics = FALSE, printFlag = FALSE), miargs)
-      miceOut <- eval(as.call(imputeCall))
-      imputedData <- lapply(as.list(1:m), function(i) mice::complete(data = miceOut,
-                            action = i, include = FALSE))
+    else {
+      imputedData <- list(data)
     }
-    else stop("currently plssemWGT_BOOTMI() only supports imputation by Amelia or mice.")
 
     csemListCall <- list(cSEM::csem, .model = csemmodel, .data = imputedData)
     csemListCall <- c(csemListCall, csemargs)
@@ -387,6 +412,7 @@ plssemWGT_BOOTMI <- function(model, data, ..., m = 5, miArgs = list(),
     csemmodel = model, csemargs = csemArgs, verb = FALSE, wtype = wgtType)
   bootListCall <- c(bootListCall, bootArgs)
   bootRes <- eval(as.call(bootListCall))
+  wgts[wgts == 0] <- 1
   if (wgtType == "rows") {
     wgts <- nrow(data)/wgts[-1]
   }

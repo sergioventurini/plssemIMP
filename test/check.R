@@ -148,7 +148,7 @@ res <- run_sims(runs = nruns,
                 verbose = TRUE, boot_mi = "weighted_bootmi", level = conflev,
                 meanimp = TRUE, knnimp = TRUE, argsKNN = list(k = c(5, 7)),
                 listwise = TRUE, fulloriginal = TRUE,
-                seed = 1404, wgtType = "rows")
+                global_seed = 1404, wgtType = "rows", runALL = FALSE)
 
 ## aggregate results
 res_df <- aggregate_results(res, true_coefs = true_coefs,
