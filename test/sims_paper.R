@@ -10,7 +10,7 @@ conflev <- 0.95
 ngb <- c(5, 9, 15)
 
 # set random seed
-global_seed <- 1406
+global_seed <- 1809
 set.seed(global_seed)
 
 source(file.path(path_to_save, "sims_models.R"))
@@ -117,7 +117,6 @@ for (md in 1:length(models_dgp)) {
                             datalist = datafulllist,
                             datamisslist = datamisslist,
                             runALL = TRUE)
-            res <- list(run = allscenarios)
 
             mod <- paste0("m", md)
             cnst <- ifelse(PLSc, "PLSc", "PLS-SEM")
