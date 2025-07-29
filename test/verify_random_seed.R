@@ -4,8 +4,8 @@ library(tidyverse)
 path_to_save <- "/Users/Sergio/Documents/Dati_VENTURINI/2_Research/1_Methods/PLS-SEM_missing/paper/results"
 
 nruns <- 3 #500
-nimp <- 20
-nboot <- 200
+nimp <- 3 #20
+nboot <- 20 #200
 conflev <- 0.95
 ngb <- c(5, 9, 15)
 
@@ -14,11 +14,11 @@ global_seed <- 1809
 set.seed(global_seed)
 
 source(file.path(path_to_save, "sims_models.R"))
-nsample <- c(100, 300, 1000)
-consistent <- c(FALSE, TRUE)
-boot_mi <- c("miboot", "bootmi", "miboot_pooled", "bootmi_pooled", "weighted_bootmi")
-miss_mech <- c("MCAR", "MAR")
-miss_prop <- c(0.05, 0.2, 0.5)  # prop of incomplete cases (not overall prop of missings)
+nsample <- 100
+consistent <- FALSE
+boot_mi <- "weighted_bootmi"
+miss_mech <- "MCAR"
+miss_prop <- 0.05
 
 # mice::ampute() arguments
 nvars <- lapply(models_dgp, function(m) length(cSEM::parseModel(m)$indicators))
@@ -117,10 +117,10 @@ for (md in 1:length(models_dgp)) {
                             replic_seeds = NULL,
                             boot_mi = bs_mi,
                             level = conflev,
-                            meanimp = TRUE,
-                            knnimp = TRUE, argsKNN = list(k = ngb),
-                            listwise = TRUE,
-                            fulloriginal = TRUE,
+                            meanimp = FALSE,
+                            knnimp = FALSE, argsKNN = list(k = ngb),
+                            listwise = FALSE,
+                            fulloriginal = FALSE,
                             wgtType = "rows",
                             datalist = datafulllist,
                             datamisslist = datamisslist,
