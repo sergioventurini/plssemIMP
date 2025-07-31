@@ -41,13 +41,11 @@ run_sims <- function(
   else {
     methodsMI <- argsMI$methods
   }
-  mMI <- argsMI$m
-  pkgMI <- argsMI$pkg
   modelMI <- argsMI$model
-  argsMI <- argsMI[setdiff(names(argsMI), c("methods", "m", "pkg", "model"))]
+  argsMI <- argsMI[setdiff(names(argsMI), c("methods", "model"))]
 
   if (!is.null(global_seed)) {
-    set.seed(seed = global_seed)
+    set.seed(seed = global_seed, "L'Ecuyer-CMRG")
   }
   start_seed <- .Random.seed
   if (!is.null(replic_seeds) & (length(replic_seeds) != runs))
@@ -72,13 +70,15 @@ run_sims <- function(
   res_all <- res <- run_seeds <- list()
   for (run in 1:runs) {
     if (!is.null(replic_seeds)) {
-      set.seed(seed = replic_seeds[run])
+      set.seed(seed = replic_seeds[run], "L'Ecuyer-CMRG")
     }
     run_seeds[[run]] <- .Random.seed
     if (verbose)
       cat(paste0("Simulation run ", run, " of ", runs, "\n"))
 
+    #################################
     ## STEP 1: generate complete data
+    #################################
     if (is.null(datalist)) {
       dat <- create_data(n = nCD, method = methodCD, pkg = pkgCD, args = argsCD)
     }
@@ -89,10 +89,12 @@ run_sims <- function(
     }
     dat_orig <- dat
     
+    ################################
     ## STEP 2: generate missing data
+    ################################
     if (is.null(datamisslist)) {
       dat_miss <- make_missing(dat, prop = propMM, mech = mechMM, method = methodMM,
-        missArgs = argsMM)
+                               missArgs = argsMM)
       dat <- as.data.frame(dat_miss$amputed)
     }
     else {
@@ -101,80 +103,28 @@ run_sims <- function(
     
     res <- list()
 
+    ##################################################
     ## STEP 3: perform multiple imputation & bootstrap
+    ##################################################
     if (runALL) {
       for (methMI in methodsMI) {
         miArgs <- c(method = methMI, argsMI)
-        if (verbose)
-          cat(paste0("  - multiple imputation package/method: ", pkgMI, "/", methMI, "\n"))
-        if (boot_mi == "miboot") {
-          if (is.null(argscSEM$.resample_method)) {
-            argscSEM <- c(argscSEM, .resample_method = "bootstrap")
-            warning("the .resample_method option has been set to 'bootstrap'.")
-          }
-          else if (argscSEM$.resample_method != "bootstrap") {
-            argscSEM$.resample_method <- "bootstrap"
-            warning("the .resample_method option has been set to 'bootstrap'.")
-          }
-          res[[methMI]] <- plssemMIBOOT(model = modelMI, data = dat, m = mMI,
-                                        miArgs = miArgs, miPackage = pkgMI, csemArgs = argscSEM,
-                                        verbose = verbose, seed = NULL, level = level)
-        }
-        else if (boot_mi == "bootmi") {
-          if (!is.null(argscSEM$.resample_method) && argscSEM$.resample_method != "none") {
-            argscSEM$.resample_method <- "none"
-            warning("the .resample_method option has been set to 'none'.")
-          }
-          res[[methMI]] <- plssemBOOTMI(model = modelMI, data = dat, m = mMI,
-                                        miArgs = miArgs, miPackage = pkgMI,
-                                        csemArgs = argscSEM, bootArgs = argsBOOT,
-                                        verbose = verbose, seed = NULL, level = level)
-        }
-        else if (boot_mi == "miboot_pooled") {
-          if (is.null(argscSEM$.resample_method)) {
-            argscSEM <- c(argscSEM, .resample_method = "bootstrap")
-            warning("the .resample_method option has been set to 'bootstrap'.")
-          }
-          else if (argscSEM$.resample_method != "bootstrap") {
-            argscSEM$.resample_method <- "bootstrap"
-            warning("the .resample_method option has been set to 'bootstrap'.")
-          }
-          res[[methMI]] <- plssemMIBOOT_PS(model = modelMI, data = dat, m = mMI,
-                                           miArgs = miArgs, miPackage = pkgMI,
-                                           csemArgs = argscSEM, verbose = verbose,
-                                           seed = NULL, level = level)
-        }
-        else if (boot_mi == "bootmi_pooled") {
-          if (!is.null(argscSEM$.resample_method) && argscSEM$.resample_method != "none") {
-            argscSEM$.resample_method <- "none"
-            warning("the .resample_method option has been set to 'none'.")
-          }
-          res[[methMI]] <- plssemBOOTMI_PS(model = modelMI, data = dat, m = mMI,
-                                           miArgs = miArgs, miPackage = pkgMI,
-                                           csemArgs = argscSEM, bootArgs = argsBOOT,
-                                           verbose = verbose, seed = NULL, level = level)
-        }
-        else if (boot_mi == "weighted_bootmi") {
-          if (!is.null(argscSEM$.resample_method) && argscSEM$.resample_method != "none") {
-            argscSEM$.resample_method <- "none"
-            warning("the .resample_method option has been set to 'none'.")
-          }
-          if (argsBOOT$parallel != "no") {
-            argsBOOT$parallel <- "no"
-            warning("the weighted version of 'bootmi' can't use parallel computation and it will take longer.")
-          }
-          res[[methMI]] <- plssemWGT_BOOTMI(model = modelMI, data = dat, m = mMI,
-                                            miArgs = miArgs, miPackage = pkgMI,
-                                            csemArgs = argscSEM, bootArgs = argsBOOT,
-                                            verbose = verbose, seed = NULL, level = level,
-                                            wgtType = wgtType)
-        }
-        else {
-          stop("the selected bootstrap/multiple imputation approach is not available.")
-        }
+        res_mi <- plssemIMP(data = dat,
+                            model = modelMI,
+                            argsMI = miArgs,
+                            argscSEM = argscSEM,
+                            argsBOOT = argsBOOT,
+                            boot_mi = boot_mi,
+                            wgtType = wgtType,
+                            verbose = verbose,
+                            seed = replic_seeds[run],
+                            level = level)
+        res[[methMI]] <- res_mi$res
       }
 
+      ####################################
       ## STEP 4: perform single imputation
+      ####################################
       if (boot_mi == "bootmi" | boot_mi == "bootmi_pooled" | boot_mi == "weighted_bootmi")
         argscSEM$.resample_method <- "bootstrap"
 
@@ -187,7 +137,7 @@ run_sims <- function(
                                  level = level)
       }
 
-      # k-nearest neighbor imputation
+      # k-nearest neighbour imputation
       if (knnimp) {
         if (is.null(argsKNN$method))
           argsKNN$method <- "euclidean"

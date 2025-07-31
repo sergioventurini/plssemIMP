@@ -1,7 +1,7 @@
 create_data <- function(n = 50, method = "norm", pkg = NULL, args = list(),
   seed = NULL) {
   if (!is.null(seed)) {
-    set.seed(seed = seed)
+    set.seed(seed = seed, "L'Ecuyer-CMRG")
   }
 
   if (method == "reg") {

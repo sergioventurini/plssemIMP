@@ -11,34 +11,34 @@ ngb <- c(5, 9, 15)
 
 # set random seed
 global_seed <- 1809
-set.seed(global_seed)
+set.seed(global_seed, "L'Ecuyer-CMRG")
 
 source(file.path(path_to_save, "sims_models.R"))
 nsample <- c(100, 300, 1000)
 consistent <- c(FALSE, TRUE)
-boot_mi <- c("miboot", "bootmi", "miboot_pooled", "bootmi_pooled", "weighted_bootmi")
+boot_mi <- c("miboot", "bootmi", "weighted_bootmi")
 miss_mech <- c("MCAR", "MAR")
-miss_prop <- c(0.05, 0.2, 0.5)  # prop of incomplete cases (not overall prop of missings)
+miss_prop <- c(0.1, 0.3, 0.8)  # prop of incomplete cases (not overall prop of missings)
 
 # mice::ampute() arguments
 nvars <- lapply(models_dgp, function(m) length(cSEM::parseModel(m)$indicators))
 mice_patt <- lapply(nvars,
-                    function(x) rbind(generate_patterns(x, 1)))
+                    function(x) rbind(generate_patterns(x, 2)))
 # mice_patt <- lapply(nvars,
 #                     function(x) rbind(generate_patterns(x, 1),
 #                                       generate_patterns(x, 2)))
 mice_freq <- mapply(
   function(pt, nv)
     generate_freqs(pt,
-                   reps = choose(nv, 1),
+                   reps = choose(nv, 2),
                    weights = 1),
-  mice_patt, nvars)
+  mice_patt, nvars, SIMPLIFY = FALSE)
 # mice_freq <- mapply(
 #   function(pt, nv)
 #     generate_freqs(pt,
 #                    reps = c(choose(nv, 1), choose(nv, 2)),
 #                    weights = c(0.7, 0.3)),
-#   mice_patt, nvars)
+#   mice_patt, nvars, SIMPLIFY = FALSE)
 mice_weights <- NULL
 mice_cont <- TRUE
 mice_odds <- NULL
@@ -52,7 +52,7 @@ allscenarios <- 1
 for (md in 1:length(models_dgp)) {
   argsMI <- list(m = nimp, pkg = "mice",
                  methods = mice_methods,
-                 model = models_csem[[md]],  # same model as in the DGP
+                 model = models_csem[[md]],  # same model as the DGP
                  maxit = 10,
                  blocks = make_blocks(models_csem[[md]]))
   for (n in nsample) {

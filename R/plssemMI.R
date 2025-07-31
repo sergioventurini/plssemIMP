@@ -4,7 +4,7 @@ plssemMIBOOT <- function(model, data, ..., m = 5, miArgs = list(),
   CALL <- match.call()
   dots <- list(...)
   if (!is.null(seed) && !missing(seed)) {
-    set.seed(seed = seed)
+    set.seed(seed = seed, "L'Ecuyer-CMRG")
   }
   imputedData <- NULL
 
@@ -82,18 +82,14 @@ plssemBOOTMI <- function(model, data, ..., m = 5, miArgs = list(),
   CALL <- match.call()
   dots <- list(...)
   if (!is.null(seed) && !missing(seed)) {
-    set.seed(seed = seed)
+    set.seed(seed = seed, "L'Ecuyer-CMRG")
   }
 
   if (missing(data)) {
     stop("a dataset is needed to run the plssemBOOTMI() function.")
   }
 
-  boot_i <- 0
   bootstrap_mi <- function(data, indices, mipkg, miargs, miruns, csemmodel, csemargs, verb) {
-    boot_i <<- boot_i + 1
-    # if (verb)
-    #   cat(paste0("  - bootstrap sample ", boot_i, "\n"))
     boot_sample <- data[indices, ]
 
     imputedData <- NULL
@@ -158,11 +154,25 @@ plssemBOOTMI <- function(model, data, ..., m = 5, miArgs = list(),
   bootListCall <- c(bootListCall, bootArgs)
   bootRes <- eval(as.call(bootListCall))
   indices_list <- rbind(1:nrow(data), boot::boot.array(bootRes, indices = TRUE))
-  bootRes <- lapply(seq_len(nrow(indices_list)), function(r) {
-    idx <- indices_list[r, ]
-    bootstrap_mi(data = data, indices = idx, mipkg = miPackage, miargs = miArgs,
-                 miruns = m, csemmodel = model, csemargs = csemArgs, verb = verbose)
-  })
+  if (.Platform$OS.type == "unix") {
+    bootRes <- parallel::mclapply(seq_len(nrow(indices_list)),  # this can be used only with macOS computers
+                                  function(r) {
+                                    idx <- indices_list[r, ]
+                                    bootstrap_mi(data = data, indices = idx, mipkg = miPackage,
+                                                 miargs = miArgs, miruns = m, csemmodel = model,
+                                                 csemargs = csemArgs, verb = verbose)
+                                  },
+                                  mc.cores = argsBOOT$ncpus)
+  }
+  else {
+    bootRes <- lapply(seq_len(nrow(indices_list)),  # under Windows we should use parLapply() but it is too cumbersome
+                      function(r) {
+                        idx <- indices_list[r, ]
+                        bootstrap_mi(data = data, indices = idx, mipkg = miPackage,
+                                     miargs = miArgs, miruns = m, csemmodel = model,
+                                     csemargs = csemArgs, verb = verbose)
+                        })
+  }
   boot_fit$BootOrig <- bootRes[[1]]   # these are the cSEM results on the original dataset after imputation
   boot_fit$BootMatrix <- do.call(rbind, bootRes[2:length(bootRes)])
   ###
@@ -192,7 +202,7 @@ plssemMIBOOT_PS <- function(model, data, ..., m = 5, miArgs = list(),
   CALL <- match.call()
   dots <- list(...)
   if (!is.null(seed) && !missing(seed)) {
-    set.seed(seed = seed)
+    set.seed(seed = seed, "L'Ecuyer-CMRG")
   }
   imputedData <- NULL
 
@@ -263,18 +273,14 @@ plssemBOOTMI_PS <- function(model, data, ..., m = 5, miArgs = list(),
   CALL <- match.call()
   dots <- list(...)
   if (!is.null(seed) && !missing(seed)) {
-    set.seed(seed = seed)
+    set.seed(seed = seed, "L'Ecuyer-CMRG")
   }
 
   if (missing(data)) {
     stop("a dataset is needed to run the plssemBOOTMI_PS() function.")
   }
 
-  boot_i <- 0
   bootstrap_mi_ps <- function(data, indices, mipkg, miargs, miruns, csemmodel, csemargs, verb) {
-    boot_i <<- boot_i + 1
-    # if (verb)
-    #   cat(paste0("  - bootstrap sample ", boot_i, "\n"))
     boot_sample <- data[indices, ]
 
     imputedData <- NULL
@@ -337,11 +343,25 @@ plssemBOOTMI_PS <- function(model, data, ..., m = 5, miArgs = list(),
   bootListCall <- c(bootListCall, bootArgs)
   bootRes <- eval(as.call(bootListCall))
   indices_list <- rbind(1:nrow(data), boot::boot.array(bootRes, indices = TRUE))
-  bootRes <- lapply(seq_len(nrow(indices_list)), function(r) {
-    idx <- indices_list[r, ]
-    bootstrap_mi_ps(data = data, indices = idx, mipkg = miPackage, miargs = miArgs,
-                    miruns = m, csemmodel = model, csemargs = csemArgs, verb = verbose)
-  })
+  if (.Platform$OS.type == "unix") {
+    bootRes <- parallel::mclapply(seq_len(nrow(indices_list)),  # this can be used only with macOS computers
+                                  function(r) {
+                                    idx <- indices_list[r, ]
+                                    bootstrap_mi_ps(data = data, indices = idx, mipkg = miPackage,
+                                                    miargs = miArgs, miruns = m, csemmodel = model,
+                                                    csemargs = csemArgs, verb = verbose)
+                                  },
+                                  mc.cores = argsBOOT$ncpus)
+  }
+  else {
+    bootRes <- lapply(seq_len(nrow(indices_list)),  # under Windows we should use parLapply() but it is too cumbersome
+                      function(r) {
+                        idx <- indices_list[r, ]
+                        bootstrap_mi_ps(data = data, indices = idx, mipkg = miPackage,
+                                        miargs = miArgs, miruns = m, csemmodel = model,
+                                        csemargs = csemArgs, verb = verbose)
+    })
+  }
   boot_fit$BootOrig <- bootRes[[1]]   # these are the cSEM results on the original dataset after imputation
   boot_fit$BootMatrix <- t(sapply(bootRes[2:length(bootRes)],
                                   function(x) as.vector(x),
@@ -380,25 +400,20 @@ plssemWGT_BOOTMI <- function(model, data, ..., m = 5, miArgs = list(),
   CALL <- match.call()
   dots <- list(...)
   if (!is.null(seed) && !missing(seed)) {
-    set.seed(seed = seed)
+    set.seed(seed = seed, "L'Ecuyer-CMRG")
   }
 
   if (missing(data)) {
     stop("a dataset is needed to run the plssemWGT_BOOTMI() function.")
   }
 
-  boot_i <- 0
-  wgts <- numeric(csemArgs$.R)
   w_bootstrap_mi <- function(data, indices, mipkg, miargs, miruns, csemmodel, csemargs, verb, wtype) {
-    boot_i <<- boot_i + 1
-    # if (verb)
-    #   cat(paste0("  - bootstrap sample ", boot_i, "\n"))
     boot_sample <- data[indices, ]
     if (wtype == "rows") {
-      wgts[boot_i] <<- sum(apply(boot_sample, 1, function(x) any(is.na(x))))  # num of rows with at least one missing
+      wgt <- sum(apply(boot_sample, 1, function(x) any(is.na(x))))  # num of rows with at least one missing
     }
     else if (wtype == "all") {
-      wgts[boot_i] <<- sum(is.na(boot_sample))                                # overall num of obs that are missing
+      wgt <- sum(is.na(boot_sample))                                # num of missing data cells
     }
 
     imputedData <- NULL
@@ -447,7 +462,7 @@ plssemWGT_BOOTMI <- function(model, data, ..., m = 5, miArgs = list(),
     if (!all(unlist(fit$convList))) 
       warning("the model did not converge for all imputed data sets.")
     fit$DataList <- imputedData
-    c(rubin_est(fit$PathList), rubin_est(fit$LoadingList))
+    c(wgt = wgt, rubin_est(fit$PathList), rubin_est(fit$LoadingList))
   }
   boot_fit <- list()
 
@@ -458,14 +473,28 @@ plssemWGT_BOOTMI <- function(model, data, ..., m = 5, miArgs = list(),
   bootListCall <- c(bootListCall, bootArgs)
   bootRes <- eval(as.call(bootListCall))
   indices_list <- rbind(1:nrow(data), boot::boot.array(bootRes, indices = TRUE))
-  bootRes <- lapply(seq_len(nrow(indices_list)), function(r) {
-    idx <- indices_list[r, ]
-    w_bootstrap_mi(data = data, indices = idx, mipkg = miPackage, miargs = miArgs,
-                   miruns = m, csemmodel = model, csemargs = csemArgs, verb = verbose,
-                   wtype = wgtType)
-  })
-  boot_fit$BootOrig <- bootRes[[1]]   # these are the cSEM results on the original dataset after imputation
-  boot_fit$BootMatrix <- do.call(rbind, bootRes[2:length(bootRes)])
+  # if (.Platform$OS.type == "unix") {  # parallel computing gives an error sometimes, so we revert to non-parallel
+  #   bootRes <- parallel::mclapply(seq_len(nrow(indices_list)),
+  #                                 function(r) {
+  #                                   idx <- indices_list[r, ]
+  #                                   w_bootstrap_mi(data = data, indices = idx, mipkg = miPackage,
+  #                                                  miargs = miArgs, miruns = m, csemmodel = model,
+  #                                                  csemargs = csemArgs, verb = verbose, wtype = wgtType)
+  #                                 },
+  #                                 mc.cores = argsBOOT$ncpus)
+  # }
+  # else {
+    bootRes <- lapply(seq_len(nrow(indices_list)),
+                      function(r) {
+                        idx <- indices_list[r, ]
+                        w_bootstrap_mi(data = data, indices = idx, mipkg = miPackage,
+                                       miargs = miArgs, miruns = m, csemmodel = model,
+                                       csemargs = csemArgs, verb = verbose, wtype = wgtType)
+                      })
+  # }
+  boot_fit$BootOrig <- (bootRes[[1]])[-1]   # these are the cSEM results on the original dataset after imputation
+  boot_fit$BootMatrix <- (do.call(rbind, bootRes[2:length(bootRes)]))[, -1, drop = FALSE]
+  wgts <- (do.call(rbind, bootRes[2:length(bootRes)]))[, 1]
   ###
 
   ###
@@ -481,10 +510,10 @@ plssemWGT_BOOTMI <- function(model, data, ..., m = 5, miArgs = list(),
 
   wgts[wgts == 0] <- 1
   if (wgtType == "rows") {
-    wgts <- nrow(data)/wgts[-1]
+    wgts <- nrow(data)/wgts
   }
   else if (wgtType == "all") {
-    wgts <- prod(dim(data))/wgts[-1]
+    wgts <- prod(dim(data))/wgts
   }
 
   boot_fit$model <- model

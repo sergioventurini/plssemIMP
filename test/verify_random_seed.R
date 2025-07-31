@@ -3,15 +3,15 @@ library(tidyverse)
 
 path_to_save <- "/Users/Sergio/Documents/Dati_VENTURINI/2_Research/1_Methods/PLS-SEM_missing/paper/results"
 
-nruns <- 3 #500
-nimp <- 3 #20
-nboot <- 20 #200
+nruns <- 2
+nimp <- 2
+nboot <- 3
 conflev <- 0.95
 ngb <- c(5, 9, 15)
 
-# set random seed
+# set gloabl random seed
 global_seed <- 1809
-set.seed(global_seed)
+set.seed(global_seed, "L'Ecuyer-CMRG")
 
 source(file.path(path_to_save, "sims_models.R"))
 nsample <- 100
@@ -23,22 +23,22 @@ miss_prop <- 0.05
 # mice::ampute() arguments
 nvars <- lapply(models_dgp, function(m) length(cSEM::parseModel(m)$indicators))
 mice_patt <- lapply(nvars,
-                    function(x) rbind(generate_patterns(x, 1)))
+                    function(x) rbind(generate_patterns(x, 2)))
 # mice_patt <- lapply(nvars,
 #                     function(x) rbind(generate_patterns(x, 1),
 #                                       generate_patterns(x, 2)))
 mice_freq <- mapply(
   function(pt, nv)
     generate_freqs(pt,
-                   reps = choose(nv, 1),
+                   reps = choose(nv, 2),
                    weights = 1),
-  mice_patt, nvars)
+  mice_patt, nvars, SIMPLIFY = FALSE)
 # mice_freq <- mapply(
 #   function(pt, nv)
 #     generate_freqs(pt,
 #                    reps = c(choose(nv, 1), choose(nv, 2)),
 #                    weights = c(0.7, 0.3)),
-#   mice_patt, nvars)
+#   mice_patt, nvars, SIMPLIFY = FALSE)
 mice_weights <- NULL
 mice_cont <- TRUE
 mice_odds <- NULL
@@ -48,11 +48,12 @@ mice_methods <- c("norm", "pmm", "rf")
 argsBOOT <- list(parallel = ifelse(.Platform$OS.type == "unix", "multicore", "snow"),
                  ncpus = parallel::detectCores())
 
+res_all <- list()
 allscenarios <- 1
 for (md in 1:length(models_dgp)) {
   argsMI <- list(m = nimp, pkg = "mice",
                  methods = mice_methods,
-                 model = models_csem[[md]],  # same model as in the DGP
+                 model = models_csem[[md]],  # same model as the DGP
                  maxit = 10,
                  blocks = make_blocks(models_csem[[md]]))
   for (n in nsample) {
@@ -128,8 +129,9 @@ for (md in 1:length(models_dgp)) {
 
             mod <- paste0("m", md)
             cnst <- ifelse(PLSc, "PLSc", "PLS-SEM")
-            save(res, file = file.path(path_to_save,
-                 paste0("res_", mod, "_", n, "_", cnst, "_", bs_mi, "_", mmech, "_", mprop, ".RData")))
+            # save(res, file = file.path(path_to_save,
+            #      paste0("res_", mod, "_", n, "_", cnst, "_", bs_mi, "_", mmech, "_", mprop, ".RData")))
+            res_all[[paste0("mod", mod, "_", n, "_", cnst, "_", bs_mi, "_", mmech, "_", mprop)]] <- res
             allscenarios <- allscenarios + 1
             cat("\n")
           }
@@ -138,3 +140,15 @@ for (md in 1:length(models_dgp)) {
     }
   }
 }
+
+# res1 <- res_all
+# res2 <- res_all
+# res3 <- res_all
+# all.equal(res1$`modm2_100_PLS-SEM_weighted_bootmi_MCAR_0.05`$run_2$rf$path_sd,
+#           res2$`modm2_100_PLS-SEM_weighted_bootmi_MCAR_0.05`$run_2$rf$path_sd)
+# all.equal(res1$`modm2_100_PLS-SEM_weighted_bootmi_MCAR_0.05`$run_2$rf$path_sd,
+#           res3$`modm2_100_PLS-SEM_weighted_bootmi_MCAR_0.05`$run_2$rf$path_sd)
+# all.equal(res1$`modm3_100_PLS-SEM_weighted_bootmi_MCAR_0.05`$run_1$pmm$load_vcov,
+#           res2$`modm3_100_PLS-SEM_weighted_bootmi_MCAR_0.05`$run_1$pmm$load_vcov)
+# all.equal(res1$`modm3_100_PLS-SEM_weighted_bootmi_MCAR_0.05`$run_1$pmm$load_vcov,
+#           res3$`modm3_100_PLS-SEM_weighted_bootmi_MCAR_0.05`$run_1$pmm$load_vcov)
