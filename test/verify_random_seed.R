@@ -3,34 +3,36 @@ library(tidyverse)
 
 path_to_save <- "/Users/Sergio/Documents/Dati_VENTURINI/2_Research/1_Methods/PLS-SEM_missing/paper/results"
 
-nruns <- 2
-nimp <- 2
-nboot <- 3
+nruns <- 3
+nimp <- 20
+nboot <- 200
 conflev <- 0.95
 ngb <- c(5, 9, 15)
 
 # set gloabl random seed
+RNGkind("L'Ecuyer-CMRG")  # sets the L'Ecuyer-CMRG RNG
 global_seed <- 1809
-set.seed(global_seed, "L'Ecuyer-CMRG")
+set.seed(global_seed, "L'Ecuyer-CMRG")  # same as above (redundant) and sets the seed
+parallel::mc.reset.stream()  # see ?parallel::mcparallel, section 'Random numbers'
 
 source(file.path(path_to_save, "sims_models.R"))
 nsample <- 100
-consistent <- FALSE
-boot_mi <- "weighted_bootmi"
+consistent <- TRUE
+boot_mi <- "miboot"
 miss_mech <- "MCAR"
-miss_prop <- 0.05
+miss_prop <- 0.1
 
 # mice::ampute() arguments
 nvars <- lapply(models_dgp, function(m) length(cSEM::parseModel(m)$indicators))
 mice_patt <- lapply(nvars,
-                    function(x) rbind(generate_patterns(x, 2)))
+                    function(x) rbind(generate_patterns(x, 1)))
 # mice_patt <- lapply(nvars,
 #                     function(x) rbind(generate_patterns(x, 1),
 #                                       generate_patterns(x, 2)))
 mice_freq <- mapply(
   function(pt, nv)
     generate_freqs(pt,
-                   reps = choose(nv, 2),
+                   reps = choose(nv, 1),
                    weights = 1),
   mice_patt, nvars, SIMPLIFY = FALSE)
 # mice_freq <- mapply(
@@ -43,7 +45,7 @@ mice_weights <- NULL
 mice_cont <- TRUE
 mice_odds <- NULL
 mice_type <- "TAIL"
-mice_methods <- c("norm", "pmm", "rf")
+mice_methods <- c("norm", "pmm")  #c("norm", "pmm", "rf")
 
 argsBOOT <- list(parallel = ifelse(.Platform$OS.type == "unix", "multicore", "snow"),
                  ncpus = parallel::detectCores())
@@ -95,7 +97,7 @@ for (md in 1:length(models_dgp)) {
                            .tolerance = 1e-07,
                            .resample_method = "bootstrap",
                            .handle_inadmissibles = "replace",
-                           .eval_plan = ifelse(.Platform$OS.type == "unix", "multicore", "multisession"))
+                           .eval_plan = "multisession")
           for (bs_mi in boot_mi) {
             scenario <- paste0("SCENARIO ", allscenarios, ": MODEL ", md,
                                                           " - N = ", n,

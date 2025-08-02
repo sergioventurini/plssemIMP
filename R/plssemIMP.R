@@ -114,10 +114,10 @@ plssemIMP <- function(
       argscSEM$.resample_method <- "none"
       if (verbose) warning("the .resample_method option has been set to 'none'.")
     }
-    if (argsBOOT$parallel != "no") {
-      argsBOOT$parallel <- "no"
-      if (verbose) warning("the weighted version of 'bootmi' can't use parallel computation and it will take longer.")
-    }
+    # if (argsBOOT$parallel != "no") {
+    #   argsBOOT$parallel <- "no"
+    #   if (verbose) warning("the weighted version of 'bootmi' can't use parallel computation and it will take longer.")
+    # }
     res <- plssemWGT_BOOTMI(model = model, data = data, m = mMI,
                             miArgs = miArgs, miPackage = pkgMI,
                             csemArgs = argscSEM, bootArgs = argsBOOT,

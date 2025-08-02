@@ -462,7 +462,7 @@ plssemWGT_BOOTMI <- function(model, data, ..., m = 5, miArgs = list(),
     if (!all(unlist(fit$convList))) 
       warning("the model did not converge for all imputed data sets.")
     fit$DataList <- imputedData
-    c(wgt = wgt, rubin_est(fit$PathList), rubin_est(fit$LoadingList))
+    c(wgt, rubin_est(fit$PathList), rubin_est(fit$LoadingList))
   }
   boot_fit <- list()
 
@@ -473,17 +473,17 @@ plssemWGT_BOOTMI <- function(model, data, ..., m = 5, miArgs = list(),
   bootListCall <- c(bootListCall, bootArgs)
   bootRes <- eval(as.call(bootListCall))
   indices_list <- rbind(1:nrow(data), boot::boot.array(bootRes, indices = TRUE))
-  # if (.Platform$OS.type == "unix") {  # parallel computing gives an error sometimes, so we revert to non-parallel
-  #   bootRes <- parallel::mclapply(seq_len(nrow(indices_list)),
-  #                                 function(r) {
-  #                                   idx <- indices_list[r, ]
-  #                                   w_bootstrap_mi(data = data, indices = idx, mipkg = miPackage,
-  #                                                  miargs = miArgs, miruns = m, csemmodel = model,
-  #                                                  csemargs = csemArgs, verb = verbose, wtype = wgtType)
-  #                                 },
-  #                                 mc.cores = argsBOOT$ncpus)
-  # }
-  # else {
+  if (.Platform$OS.type == "unix") {  # parallel computing gives an error sometimes, so we revert to non-parallel
+    bootRes <- parallel::mclapply(seq_len(nrow(indices_list)),
+                                  function(r) {
+                                    idx <- indices_list[r, ]
+                                    w_bootstrap_mi(data = data, indices = idx, mipkg = miPackage,
+                                                   miargs = miArgs, miruns = m, csemmodel = model,
+                                                   csemargs = csemArgs, verb = verbose, wtype = wgtType)
+                                  },
+                                  mc.cores = argsBOOT$ncpus)
+  }
+  else {
     bootRes <- lapply(seq_len(nrow(indices_list)),
                       function(r) {
                         idx <- indices_list[r, ]
@@ -491,7 +491,7 @@ plssemWGT_BOOTMI <- function(model, data, ..., m = 5, miArgs = list(),
                                        miargs = miArgs, miruns = m, csemmodel = model,
                                        csemargs = csemArgs, verb = verbose, wtype = wgtType)
                       })
-  # }
+  }
   boot_fit$BootOrig <- (bootRes[[1]])[-1]   # these are the cSEM results on the original dataset after imputation
   boot_fit$BootMatrix <- (do.call(rbind, bootRes[2:length(bootRes)]))[, -1, drop = FALSE]
   wgts <- (do.call(rbind, bootRes[2:length(bootRes)]))[, 1]

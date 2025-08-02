@@ -3,34 +3,36 @@ library(tidyverse)
 
 path_to_save <- "/Users/Sergio/Documents/Dati_VENTURINI/2_Research/1_Methods/PLS-SEM_missing/paper/results"
 
-nruns <- 3 #500
+nruns <- 500
 nimp <- 20
 nboot <- 200
 conflev <- 0.95
-ngb <- c(5, 9, 15)
+ngb <- c(5, 9, 13)
 
 # set random seed
+RNGkind("L'Ecuyer-CMRG")  # sets the L'Ecuyer-CMRG RNG
 global_seed <- 1809
-set.seed(global_seed, "L'Ecuyer-CMRG")
+set.seed(global_seed, "L'Ecuyer-CMRG")  # same as above (redundant) and sets the seed
+parallel::mc.reset.stream()  # see ?parallel::mcparallel, section 'Random numbers'
 
 source(file.path(path_to_save, "sims_models.R"))
-nsample <- c(100, 300, 1000)
-consistent <- c(FALSE, TRUE)
+nsample <- c(100, 500)  #c(100, 300, 1000)
+consistent <- TRUE  #c(FALSE, TRUE)
 boot_mi <- c("miboot", "bootmi", "weighted_bootmi")
 miss_mech <- c("MCAR", "MAR")
-miss_prop <- c(0.1, 0.3, 0.8)  # prop of incomplete cases (not overall prop of missings)
+miss_prop <- c(0.1, 0.8)  #c(0.1, 0.3, 0.8)  # prop of incomplete cases (not overall prop of missings)
 
 # mice::ampute() arguments
 nvars <- lapply(models_dgp, function(m) length(cSEM::parseModel(m)$indicators))
 mice_patt <- lapply(nvars,
-                    function(x) rbind(generate_patterns(x, 2)))
+                    function(x) rbind(generate_patterns(x, 1)))
 # mice_patt <- lapply(nvars,
 #                     function(x) rbind(generate_patterns(x, 1),
 #                                       generate_patterns(x, 2)))
 mice_freq <- mapply(
   function(pt, nv)
     generate_freqs(pt,
-                   reps = choose(nv, 2),
+                   reps = choose(nv, 1),
                    weights = 1),
   mice_patt, nvars, SIMPLIFY = FALSE)
 # mice_freq <- mapply(
@@ -43,7 +45,7 @@ mice_weights <- NULL
 mice_cont <- TRUE
 mice_odds <- NULL
 mice_type <- "TAIL"
-mice_methods <- c("norm", "pmm", "rf")
+mice_methods <- c("norm", "pmm")  #c("norm", "pmm", "rf")
 
 argsBOOT <- list(parallel = ifelse(.Platform$OS.type == "unix", "multicore", "snow"),
                  ncpus = parallel::detectCores())
@@ -94,7 +96,7 @@ for (md in 1:length(models_dgp)) {
                            .tolerance = 1e-07,
                            .resample_method = "bootstrap",
                            .handle_inadmissibles = "replace",
-                           .eval_plan = ifelse(.Platform$OS.type == "unix", "multicore", "multisession"))
+                           .eval_plan = "multisession")
           for (bs_mi in boot_mi) {
             scenario <- paste0("SCENARIO ", allscenarios, ": MODEL ", md,
                                                           " - N = ", n,
