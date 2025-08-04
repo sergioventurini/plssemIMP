@@ -18,7 +18,7 @@ parallel::mc.reset.stream()  # see ?parallel::mcparallel, section 'Random number
 source(file.path(path_to_save, "sims_models.R"))
 nsample <- 100
 consistent <- TRUE
-boot_mi <- "miboot"
+boot_mi <- "bootmi"
 miss_mech <- "MCAR"
 miss_prop <- 0.1
 

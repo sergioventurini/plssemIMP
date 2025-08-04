@@ -154,25 +154,45 @@ plssemBOOTMI <- function(model, data, ..., m = 5, miArgs = list(),
   bootListCall <- c(bootListCall, bootArgs)
   bootRes <- eval(as.call(bootListCall))
   indices_list <- rbind(1:nrow(data), boot::boot.array(bootRes, indices = TRUE))
-  if (.Platform$OS.type == "unix") {
-    bootRes <- parallel::mclapply(seq_len(nrow(indices_list)),  # this can be used only with macOS computers
-                                  function(r) {
-                                    idx <- indices_list[r, ]
-                                    bootstrap_mi(data = data, indices = idx, mipkg = miPackage,
-                                                 miargs = miArgs, miruns = m, csemmodel = model,
-                                                 csemargs = csemArgs, verb = verbose)
-                                  },
-                                  mc.cores = argsBOOT$ncpus)
-  }
-  else {
-    bootRes <- lapply(seq_len(nrow(indices_list)),  # under Windows we should use parLapply() but it is too cumbersome
-                      function(r) {
-                        idx <- indices_list[r, ]
-                        bootstrap_mi(data = data, indices = idx, mipkg = miPackage,
-                                     miargs = miArgs, miruns = m, csemmodel = model,
-                                     csemargs = csemArgs, verb = verbose)
-                        })
-  }
+  browser()
+  # if (.Platform$OS.type == "unix") {
+  #   bootRes <- parallel::mclapply(seq_len(nrow(indices_list)),  # this works only with macOS computers
+  #                                 function(r) {
+  #                                   idx <- indices_list[r, ]
+  #                                   bootstrap_mi(data = data, indices = idx, mipkg = miPackage,
+  #                                                miargs = miArgs, miruns = m, csemmodel = model,
+  #                                                csemargs = csemArgs, verb = verbose)
+  #                                 },
+  #                                 mc.cores = argsBOOT$ncpus)
+  # }
+  # else {
+    n_cores <- bootArgs$ncpus - 1
+    cl <- parallel::makeCluster(n_cores)
+    parallel::clusterExport(cl, varlist = c("bootstrap_mi", "data", "indices_list", "miPackage", "miArgs",
+                                            "m", "model", "csemArgs", "verbose"), envir = environment())
+    parallel::clusterEvalQ(cl, {
+      library(cSEM)
+      library(Amelia)
+      library(mice)
+    })
+
+    bootRes <- parallel::parLapply(cl, seq_len(nrow(indices_list)),
+                                   function(r) {
+                                     idx <- indices_list[r, ]
+                                     bootstrap_mi(data = data, indices = idx, mipkg = miPackage,
+                                                  miargs = miArgs, miruns = m, csemmodel = model,
+                                                  csemargs = csemArgs, verb = verbose)
+    })
+
+    parallel::stopCluster(cl)
+    # bootRes <- lapply(seq_len(nrow(indices_list)),  # under Windows we should use parLapply() but it is too cumbersome
+    #                   function(r) {
+    #                     idx <- indices_list[r, ]
+    #                     bootstrap_mi(data = data, indices = idx, mipkg = miPackage,
+    #                                  miargs = miArgs, miruns = m, csemmodel = model,
+    #                                  csemargs = csemArgs, verb = verbose)
+    #                     })
+  # }
   boot_fit$BootOrig <- bootRes[[1]]   # these are the cSEM results on the original dataset after imputation
   boot_fit$BootMatrix <- do.call(rbind, bootRes[2:length(bootRes)])
   ###
@@ -344,7 +364,7 @@ plssemBOOTMI_PS <- function(model, data, ..., m = 5, miArgs = list(),
   bootRes <- eval(as.call(bootListCall))
   indices_list <- rbind(1:nrow(data), boot::boot.array(bootRes, indices = TRUE))
   if (.Platform$OS.type == "unix") {
-    bootRes <- parallel::mclapply(seq_len(nrow(indices_list)),  # this can be used only with macOS computers
+    bootRes <- parallel::mclapply(seq_len(nrow(indices_list)),  # this works only with macOS computers
                                   function(r) {
                                     idx <- indices_list[r, ]
                                     bootstrap_mi_ps(data = data, indices = idx, mipkg = miPackage,
@@ -473,8 +493,8 @@ plssemWGT_BOOTMI <- function(model, data, ..., m = 5, miArgs = list(),
   bootListCall <- c(bootListCall, bootArgs)
   bootRes <- eval(as.call(bootListCall))
   indices_list <- rbind(1:nrow(data), boot::boot.array(bootRes, indices = TRUE))
-  if (.Platform$OS.type == "unix") {  # parallel computing gives an error sometimes, so we revert to non-parallel
-    bootRes <- parallel::mclapply(seq_len(nrow(indices_list)),
+  if (.Platform$OS.type == "unix") {
+    bootRes <- parallel::mclapply(seq_len(nrow(indices_list)),  # this works only with macOS computers
                                   function(r) {
                                     idx <- indices_list[r, ]
                                     w_bootstrap_mi(data = data, indices = idx, mipkg = miPackage,
