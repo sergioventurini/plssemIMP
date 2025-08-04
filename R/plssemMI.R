@@ -154,27 +154,33 @@ plssemBOOTMI <- function(model, data, ..., m = 5, miArgs = list(),
   bootListCall <- c(bootListCall, bootArgs)
   bootRes <- eval(as.call(bootListCall))
   indices_list <- rbind(1:nrow(data), boot::boot.array(bootRes, indices = TRUE))
-  browser()
-  # if (.Platform$OS.type == "unix") {
-  #   bootRes <- parallel::mclapply(seq_len(nrow(indices_list)),  # this works only with macOS computers
-  #                                 function(r) {
-  #                                   idx <- indices_list[r, ]
-  #                                   bootstrap_mi(data = data, indices = idx, mipkg = miPackage,
-  #                                                miargs = miArgs, miruns = m, csemmodel = model,
-  #                                                csemargs = csemArgs, verb = verbose)
-  #                                 },
-  #                                 mc.cores = argsBOOT$ncpus)
-  # }
-  # else {
+  if (.Platform$OS.type == "unix") {
+    bootRes <- parallel::mclapply(seq_len(nrow(indices_list)),  # this works only with macOS computers
+                                  function(r) {
+                                    idx <- indices_list[r, ]
+                                    bootstrap_mi(data = data, indices = idx, mipkg = miPackage,
+                                                 miargs = miArgs, miruns = m, csemmodel = model,
+                                                 csemargs = csemArgs, verb = verbose)
+                                  },
+                                  mc.cores = argsBOOT$ncpus)
+  }
+  else {
     n_cores <- bootArgs$ncpus - 1
     cl <- parallel::makeCluster(n_cores)
     parallel::clusterExport(cl, varlist = c("bootstrap_mi", "data", "indices_list", "miPackage", "miArgs",
                                             "m", "model", "csemArgs", "verbose"), envir = environment())
-    parallel::clusterEvalQ(cl, {
-      library(cSEM)
-      library(Amelia)
-      library(mice)
-    })
+    if (miPackage == "Amelia") {
+      parallel::clusterEvalQ(cl, {
+        library(cSEM)
+        library(Amelia)
+      })
+    }
+    else if (miPackage == "mice") {
+      parallel::clusterEvalQ(cl, {
+        library(cSEM)
+        library(mice)
+      })
+    }
 
     bootRes <- parallel::parLapply(cl, seq_len(nrow(indices_list)),
                                    function(r) {
@@ -192,7 +198,7 @@ plssemBOOTMI <- function(model, data, ..., m = 5, miArgs = list(),
     #                                  miargs = miArgs, miruns = m, csemmodel = model,
     #                                  csemargs = csemArgs, verb = verbose)
     #                     })
-  # }
+  }
   boot_fit$BootOrig <- bootRes[[1]]   # these are the cSEM results on the original dataset after imputation
   boot_fit$BootMatrix <- do.call(rbind, bootRes[2:length(bootRes)])
   ###
@@ -374,13 +380,40 @@ plssemBOOTMI_PS <- function(model, data, ..., m = 5, miArgs = list(),
                                   mc.cores = argsBOOT$ncpus)
   }
   else {
-    bootRes <- lapply(seq_len(nrow(indices_list)),  # under Windows we should use parLapply() but it is too cumbersome
-                      function(r) {
-                        idx <- indices_list[r, ]
-                        bootstrap_mi_ps(data = data, indices = idx, mipkg = miPackage,
-                                        miargs = miArgs, miruns = m, csemmodel = model,
-                                        csemargs = csemArgs, verb = verbose)
+    n_cores <- bootArgs$ncpus - 1
+    cl <- parallel::makeCluster(n_cores)
+    parallel::clusterExport(cl, varlist = c("bootstrap_mi_ps", "data", "indices_list", "miPackage", "miArgs",
+                                            "m", "model", "csemArgs", "verbose"), envir = environment())
+    if (miPackage == "Amelia") {
+      parallel::clusterEvalQ(cl, {
+        library(cSEM)
+        library(Amelia)
+      })
+    }
+    else if (miPackage == "mice") {
+      parallel::clusterEvalQ(cl, {
+        library(cSEM)
+        library(mice)
+      })
+    }
+    else stop("currently plssemBOOTMI_PS() only supports imputation by Amelia or mice.")
+
+    bootRes <- parallel::parLapply(cl, seq_len(nrow(indices_list)),
+                                   function(r) {
+                                     idx <- indices_list[r, ]
+                                     bootstrap_mi_ps(data = data, indices = idx, mipkg = miPackage,
+                                                     miargs = miArgs, miruns = m, csemmodel = model,
+                                                     csemargs = csemArgs, verb = verbose)
     })
+
+    parallel::stopCluster(cl)
+    # bootRes <- lapply(seq_len(nrow(indices_list)),  # under Windows we should use parLapply() but it is too cumbersome
+    #                   function(r) {
+    #                     idx <- indices_list[r, ]
+    #                     bootstrap_mi_ps(data = data, indices = idx, mipkg = miPackage,
+    #                                     miargs = miArgs, miruns = m, csemmodel = model,
+    #                                     csemargs = csemArgs, verb = verbose)
+    # })
   }
   boot_fit$BootOrig <- bootRes[[1]]   # these are the cSEM results on the original dataset after imputation
   boot_fit$BootMatrix <- t(sapply(bootRes[2:length(bootRes)],
@@ -504,13 +537,41 @@ plssemWGT_BOOTMI <- function(model, data, ..., m = 5, miArgs = list(),
                                   mc.cores = argsBOOT$ncpus)
   }
   else {
-    bootRes <- lapply(seq_len(nrow(indices_list)),
-                      function(r) {
-                        idx <- indices_list[r, ]
-                        w_bootstrap_mi(data = data, indices = idx, mipkg = miPackage,
-                                       miargs = miArgs, miruns = m, csemmodel = model,
-                                       csemargs = csemArgs, verb = verbose, wtype = wgtType)
-                      })
+    n_cores <- bootArgs$ncpus - 1
+    cl <- parallel::makeCluster(n_cores)
+    parallel::clusterExport(cl, varlist = c("w_bootstrap_mi", "data", "indices_list", "miPackage", "miArgs",
+                                            "m", "model", "csemArgs", "verbose", "wgtType"), envir = environment())
+    if (miPackage == "Amelia") {
+      parallel::clusterEvalQ(cl, {
+        library(cSEM)
+        library(Amelia)
+      })
+    }
+    else if (miPackage == "mice") {
+      parallel::clusterEvalQ(cl, {
+        library(cSEM)
+        library(mice)
+      })
+    }
+    else stop("currently plssemBOOTMI_PS() only supports imputation by Amelia or mice.")
+
+    bootRes <- parallel::parLapply(cl, seq_len(nrow(indices_list)),
+                                   function(r) {
+                                     idx <- indices_list[r, ]
+                                     w_bootstrap_mi(data = data, indices = idx, mipkg = miPackage,
+                                                    miargs = miArgs, miruns = m, csemmodel = model,
+                                                    csemargs = csemArgs, verb = verbose,
+                                                    wtype = wgtType)
+    })
+
+    parallel::stopCluster(cl)
+    # bootRes <- lapply(seq_len(nrow(indices_list)),
+    #                   function(r) {
+    #                     idx <- indices_list[r, ]
+    #                     w_bootstrap_mi(data = data, indices = idx, mipkg = miPackage,
+    #                                    miargs = miArgs, miruns = m, csemmodel = model,
+    #                                    csemargs = csemArgs, verb = verbose, wtype = wgtType)
+    #                   })
   }
   boot_fit$BootOrig <- (bootRes[[1]])[-1]   # these are the cSEM results on the original dataset after imputation
   boot_fit$BootMatrix <- (do.call(rbind, bootRes[2:length(bootRes)]))[, -1, drop = FALSE]
