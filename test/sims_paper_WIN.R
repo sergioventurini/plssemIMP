@@ -19,9 +19,9 @@ set.seed(global_seed, "L'Ecuyer-CMRG")  # same as above (redundant) and sets the
 # parallel::mc.reset.stream()  # see ?parallel::mcparallel, section 'Random numbers'
 
 source(file.path(path_to_save, "sims_models.R"))
-nsample <- c(100, 500)  #c(100, 300, 1000)
+nsample <- c(200, 1000)  #c(100, 300, 1000)
 consistent <- TRUE  #c(FALSE, TRUE)
-boot_mi <- c("miboot", "bootmi", "weighted_bootmi")
+boot_mi <- c("miboot", "bootmi")
 miss_mech <- c("MCAR", "MAR")
 miss_prop <- c(0.1, 0.8)  #c(0.1, 0.3, 0.8)  # prop of incomplete cases (not overall prop of missings)
 

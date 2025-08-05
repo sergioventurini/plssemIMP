@@ -16,7 +16,7 @@ set.seed(global_seed, "L'Ecuyer-CMRG")  # same as above (redundant) and sets the
 parallel::mc.reset.stream()  # see ?parallel::mcparallel, section 'Random numbers'
 
 source(file.path(path_to_save, "sims_models.R"))
-nsample <- 100
+nsample <- 200
 consistent <- TRUE
 boot_mi <- "bootmi"
 miss_mech <- "MCAR"
