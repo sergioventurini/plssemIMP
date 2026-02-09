@@ -163,16 +163,20 @@ csem_combine <- function(csem_res, level = 0.95) {
   path_est <- model_coef_vec(csem_res, estimates = TRUE, what = "path")
   path_boot <- csem_res$Estimates$Estimates_resample$Estimates1$Path_estimates$Resampled
   path_vcov <- cov(path_boot)
+  colnames(path_vcov) <- rownames(path_vcov) <- names(path_est)
   path_sd <- sqrt(diag(path_vcov))
   path_ci <- apply(path_boot, 2, quantile, probs = c(alpha/2, 1 - alpha/2))
+  colnames(path_ci) <- names(path_est)
   path_lwr <- path_ci[1, ]
   path_upr <- path_ci[2, ]
   
   load_est <- model_coef_vec(csem_res, estimates = TRUE, what = "load")
   load_boot <- csem_res$Estimates$Estimates_resample$Estimates1$Loading_estimates$Resampled
   load_vcov <- cov(load_boot)
+  colnames(load_vcov) <- rownames(load_vcov) <- names(load_est)
   load_sd <- sqrt(diag(load_vcov))
   load_ci <- apply(load_boot, 2, quantile, probs = c(alpha/2, 1 - alpha/2))
+  colnames(load_ci) <- names(load_est)
   load_lwr <- load_ci[1, ]
   load_upr <- load_ci[2, ]
 

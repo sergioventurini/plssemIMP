@@ -10,7 +10,8 @@ fulldata <- function(model, data, csemArgs = list(), verbose = FALSE, level = 0.
   csemListCall <- c(csemListCall, csemArgs)
   csemListCall <- csemListCall[!duplicated(names(csemListCall))]
   fit <- list()
-  fit$FitList <- list(suppressWarnings(eval(as.call(csemListCall))))
+  # fit$FitList <- list(suppressWarnings(eval(as.call(csemListCall))))
+  fit$FitList <- list(suppressWarnings(do.call(cSEM::csem, c(list(.model = model, .data = data), csemArgs))))
   fit$PathList <- lapply(fit$FitList, model_coef_vec, estimates = TRUE, what = "path")
   fit$LoadingList <- lapply(fit$FitList, model_coef_vec, estimates = TRUE, what = "load")
   fit$PathVCOVList <- lapply(fit$FitList,

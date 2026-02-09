@@ -8,15 +8,15 @@ run_sims <- function(
   boot_mi = "miboot",  # accepted values are 'miboot', 'bootmi', 'miboot_pooled', 'bootmi_pooled' and 'weighted_bootmi'
   wgtType = "rows",    # accepted values are 'rows' and 'all'
   verbose = FALSE,
-  global_seed = NULL,
-  replic_seeds = NULL,
   level = 0.95,
   meanimp = TRUE,
   knnimp = TRUE, argsKNN = list(k = 5, method = "euclidean"),
   listwise = TRUE, fulloriginal = TRUE,
   datalist = NULL,
   datamisslist = NULL,
-  runALL = TRUE) {
+  store_data = FALSE,
+  runALL = TRUE,
+  log_file = NULL) {
 
   CALL <- match.call()
   arg_names <- names(formals(sys.function()))
@@ -32,9 +32,6 @@ run_sims <- function(
   methodMM <- argsMM$method
   argsMM <- argsMM[setdiff(names(argsMM), c("prop", "mech", "method"))]
 
-  # if (propMM == 0)
-  #   stop("the proportion of missing data must be positive.")
-
   if (is.null(argsMI$methods)) {
     methodsMI <- "pmm"
   }
@@ -44,12 +41,7 @@ run_sims <- function(
   modelMI <- argsMI$model
   argsMI <- argsMI[setdiff(names(argsMI), c("methods", "model"))]
 
-  if (!is.null(global_seed)) {
-    set.seed(seed = global_seed, "L'Ecuyer-CMRG")
-  }
   start_seed <- .Random.seed
-  if (!is.null(replic_seeds) & (length(replic_seeds) != runs))
-    stop("the number of replication seeds must be equal to the number of runs.")
 
   if (!is.null(datalist)) {
     if (length(datalist) < runs)
@@ -69,12 +61,11 @@ run_sims <- function(
 
   res_all <- res <- run_seeds <- list()
   for (run in 1:runs) {
-    if (!is.null(replic_seeds)) {
-      set.seed(seed = replic_seeds[run], "L'Ecuyer-CMRG")
-    }
     run_seeds[[run]] <- .Random.seed
-    if (verbose)
+    if (verbose) {
       cat(paste0("Simulation run ", run, " of ", runs, "\n"))
+    }
+    log_msg(paste0("Simulation run ", run, " of ", runs), log_file)
 
     #################################
     ## STEP 1: generate complete data
@@ -101,8 +92,6 @@ run_sims <- function(
       dat <- datamisslist[[run]]
     }
     
-    res <- list()
-
     ##################################################
     ## STEP 3: perform multiple imputation & bootstrap
     ##################################################
@@ -117,27 +106,30 @@ run_sims <- function(
                             boot_mi = boot_mi,
                             wgtType = wgtType,
                             verbose = verbose,
-                            seed = replic_seeds[run],
-                            level = level)
+                            seed = NULL,
+                            level = level,
+                            log_file = log_file)
         res[[methMI]] <- res_mi$res
       }
 
       ####################################
       ## STEP 4: perform single imputation
       ####################################
-      if (boot_mi == "bootmi" | boot_mi == "bootmi_pooled" | boot_mi == "weighted_bootmi")
+      if (boot_mi %in% c("bootmi", "bootmi_pooled", "weighted_bootmi"))
         argscSEM$.resample_method <- "bootstrap"
 
       # mean imputation
       if (meanimp) {
-        if (verbose)
+        if (verbose) {
           cat("  - single imputation method: mean\n")
+        }
+        log_msg("  - single imputation method: mean", log_file)
         res[["mean"]] <- meanimp(model = modelMI, data = dat,
                                  csemArgs = argscSEM, verbose = verbose,
                                  level = level)
       }
 
-      # k-nearest neighbour imputation
+      # k-nearest-neighbour imputation
       if (knnimp) {
         if (is.null(argsKNN$method))
           argsKNN$method <- "euclidean"
@@ -152,8 +144,10 @@ run_sims <- function(
         }
         argsKNN$k <- floor(argsKNN$k)
         for (j in 1:length(argsKNN$k)) {
-          if (verbose)
+          if (verbose) {
             cat(paste0("  - single imputation method: k-nearest neighbors (k = ", argsKNN$k[j], ")\n"))
+          }
+          log_msg(paste0("  - single imputation method: k-nearest neighbors (k = ", argsKNN$k[j], ")"), log_file)
           res[[paste0("knn", argsKNN$k[j])]] <- knnimp(model = modelMI, data = dat,
                                                        csemArgs = argscSEM,
                                                        k = argsKNN$k[j],
@@ -165,8 +159,10 @@ run_sims <- function(
 
       # perform complete-case (i.e. listwise deletion) analysis
       if (listwise) {
-        if (verbose)
+        if (verbose) {
           cat("  - complete-case (listwise deletion) analysis\n")
+        }
+        log_msg("  - complete-case (listwise deletion) analysis", log_file)
         res[["listwise"]] <- fulldata(model = modelMI, data = na.omit(dat),
                                       csemArgs = argscSEM, verbose = verbose,
                                       level = level)
@@ -174,8 +170,10 @@ run_sims <- function(
 
       # perform analysis on original full data (i.e. before generating NAs)
       if (fulloriginal) {
-        if (verbose)
+        if (verbose){
           cat("  - analysis on the original full data (i.e. before generating NAs)\n")
+        }
+        log_msg("  - analysis on the original full data (i.e. before generating NAs)", log_file)
         res[["fulloriginal"]] <- fulldata(model = modelMI, data = dat_orig,
                                           csemArgs = argscSEM, verbose = verbose,
                                           level = level)
@@ -189,8 +187,11 @@ run_sims <- function(
       names(res) <- methods_names
     }
 
-    res$dat_orig <- dat_orig
-    res$dat_miss <- dat
+    if (store_data) {
+      res$dat_orig <- dat_orig
+      res$dat_miss <- dat
+    }
+
     res_all[[run]] <- res
   }
 

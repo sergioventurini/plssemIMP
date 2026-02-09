@@ -8,7 +8,8 @@ plssemIMP <- function(
   wgtType = "rows",    # accepted values are 'rows' and 'all'
   verbose = FALSE,
   seed = NULL,
-  level = 0.95)
+  level = 0.95,
+  log_file = NULL)
 {
   CALL <- match.call()
   arg_names <- names(formals(sys.function()))
@@ -57,11 +58,11 @@ plssemIMP <- function(
   }
 
   res <- res_all <- list()
-
-  ## perform multiple imputation & bootstrap
   miArgs <- c(method = methodMI, argsMI)
-  if (verbose)
+  if (verbose) {
     cat(paste0("  - multiple imputation package/method: ", pkgMI, "/", methodMI, "\n"))
+  }
+  log_msg(paste0("  - multiple imputation package/method: ", pkgMI, "/", methodMI), log_file)
   if (boot_mi == "miboot") {
     if (is.null(argscSEM$.resample_method)) {
       argscSEM <- c(argscSEM, .resample_method = "bootstrap")
@@ -114,10 +115,6 @@ plssemIMP <- function(
       argscSEM$.resample_method <- "none"
       if (verbose) warning("the .resample_method option has been set to 'none'.")
     }
-    # if (argsBOOT$parallel != "no") {
-    #   argsBOOT$parallel <- "no"
-    #   if (verbose) warning("the weighted version of 'bootmi' can't use parallel computation and it will take longer.")
-    # }
     res <- plssemWGT_BOOTMI(model = model, data = data, m = mMI,
                             miArgs = miArgs, miPackage = pkgMI,
                             csemArgs = argscSEM, bootArgs = argsBOOT,

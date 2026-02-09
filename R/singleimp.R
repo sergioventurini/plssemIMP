@@ -1,32 +1,37 @@
+mean_impute <- function(X) {
+  Ximp <- lapply(X, function(x) {
+    if (is.numeric(x)) {
+      x[is.na(x)] <- mean(x[!is.na(x)])
+    }
+    else {
+      x[is.na(x)] <- mode_function(x[!is.na(x)])
+    }
+    x
+  })
+  Ximp <- as.data.frame(Ximp)
+
+  Ximp
+}
+
 meanimp <- function(model, data, csemArgs = list(), verbose = FALSE, level = 0.95, ...) {
   CALL <- match.call()
   dots <- list(...)
   imputedData <- NULL
 
   if (missing(data)) {
-    stop("a data set is needed to run the meanimp() function.")
+    stop("a data set is needed to run the mean_impute() function.")
   }
 
+  imputedData <-  data
   if (any(is.na(data))) {
-    imputedData <- lapply(data, function(x) {
-      if (is.numeric(x)) {
-        x[is.na(x)] <- mean(x[!is.na(x)])
-      }
-      else {
-        x[is.na(x)] <- mode_function(x[!is.na(x)])
-      }
-      x
-    })
-    imputedData <- as.data.frame(imputedData)
-  }
-  else {
-    imputedData <-  data
+    imputedData <- mean_impute(data)
   }
 
   csemListCall <- list(cSEM::csem, .model = model, .data = imputedData)
   csemListCall <- c(csemListCall, csemArgs)
   fit <- list()
-  fit$FitList <- list(suppressWarnings(eval(as.call(csemListCall))))
+  # fit$FitList <- list(suppressWarnings(eval(as.call(csemListCall))))
+  fit$FitList <- list(suppressWarnings(do.call(cSEM::csem, c(list(.model = model, .data = imputedData), csemArgs))))
   fit$PathList <- lapply(fit$FitList, model_coef_vec, estimates = TRUE, what = "path")
   fit$LoadingList <- lapply(fit$FitList, model_coef_vec, estimates = TRUE, what = "load")
   fit$PathVCOVList <- lapply(fit$FitList,
@@ -111,17 +116,16 @@ knnimp <- function(model, data, csemArgs = list(), k = 5, method = "euclidean",
     stop("a data set is needed to run the knnimp() function.")
   }
 
+  imputedData <-  data
   if (any(is.na(data))) {
     imputedData <- knn_impute(data, k = k)
-  }
-  else {
-    imputedData <-  data
   }
 
   csemListCall <- list(cSEM::csem, .model = model, .data = imputedData)
   csemListCall <- c(csemListCall, csemArgs)
   fit <- list()
-  fit$FitList <- list(suppressWarnings(eval(as.call(csemListCall))))
+  # fit$FitList <- list(suppressWarnings(eval(as.call(csemListCall))))
+  fit$FitList <- list(suppressWarnings(do.call(cSEM::csem, c(list(.model = model, .data = imputedData), csemArgs))))
   fit$PathList <- lapply(fit$FitList, model_coef_vec, estimates = TRUE, what = "path")
   fit$LoadingList <- lapply(fit$FitList, model_coef_vec, estimates = TRUE, what = "load")
   fit$PathVCOVList <- lapply(fit$FitList,

@@ -19,6 +19,8 @@ model_coef_vec <- function(res, estimates = FALSE, what = "all") {
     load_vec <- matrix2vec(res$Estimates$Loading_estimates, names = TRUE)
     load_vec <- load_vec[load_vec != 0, ]
   }
+  names(path_vec) <- gsub("eta", "gamma", gsub("_eta", "", names(path_vec), fixed = TRUE), fixed = TRUE)
+  names(load_vec) <- gsub(".*_", "", names(load_vec))
 
   # combine
   if (what == "all") {
@@ -210,7 +212,7 @@ generate_vcov <- function(.model = NULL,
       # Scale weigths
       ws_j <- w_j / c(sqrt(w_j %*% Sigma_jj %*% w_j))
 
-      # Compute lambda
+      # Compute lambda_j
       lambda_j <- c(Sigma_jj %*% ws_j)
 
       # Replace corresponding elements in Lambda
