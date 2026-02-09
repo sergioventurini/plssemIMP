@@ -13,9 +13,9 @@ log_msg <- function(msg, log_file) {
 
 path_to_save <- "/Users/Sergio/Documents/Dati_VENTURINI/2_Research/1_Methods/PLS-SEM_missing/paper/results"
 
-nruns <- 2 #500
-nimp <- 20
-nboot <- 200
+nruns <- 500
+nimp <- 50
+nboot <- 500
 conflev <- 0.95
 ngb <- c(5, 9, 13)
 
