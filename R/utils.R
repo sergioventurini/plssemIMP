@@ -39,3 +39,14 @@ matrix2vec <- function(x, names = TRUE) {
 
   res
 }
+
+get_effective_nboot <- function(csem_result) {
+  resample <- csem_result$Estimates$Estimates_resample
+  # path estimates or loading estimates — whichever is present
+  # the number of rows = number of admissible bootstrap runs
+  boot_matrix <- resample$Estimates1$Path_estimates$Resampled
+  if (is.null(boot_matrix)) {
+    boot_matrix <- resample$Estimates1$Loading_estimates$Resampled
+  }
+  nrow(boot_matrix)
+}

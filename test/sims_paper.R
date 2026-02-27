@@ -2,7 +2,7 @@ library(plssemIMP)
 library(future)
 library(future.apply)
 
-options(future.globals.maxSize = 8 * 1024^3)  # 8 GB
+options(future.globals.maxSize = 600 * 1024^2)  # 600 MB
 
 # function for logging the simulation in each scenario
 log_msg <- function(msg, log_file) {
@@ -11,19 +11,21 @@ log_msg <- function(msg, log_file) {
       file = log_file, append = TRUE)
 }
 
-path_to_save <- "/Users/Sergio/Documents/Dati_VENTURINI/2_Research/1_Methods/PLS-SEM_missing/paper/results"
+# path_to_save <- "/Users/Sergio/Documents/Dati_VENTURINI/2_Research/1_Methods/PLS-SEM_missing/paper/results"
+path_to_save <- "/home/ubuntu/plssem_simulation/results"
 
 nruns <- 500
-nimp <- 50
-nboot <- 500
+nimp <- 20
+nboot <- 200
 conflev <- 0.95
 ngb <- c(5, 9, 13)
 
 # set global random seed
-global_seed <- 1809
+global_seed <- 3110
 set.seed(global_seed, kind = "L'Ecuyer-CMRG")
 
-source(file.path(path_to_save, "sims_models.R"))
+# source(file.path(path_to_save, "sims_models.R"))
+source(file.path("/home/ubuntu/plssem_simulation", "sims_models.R"))
 nsample <- c(200, 1000)  #c(200, 500, 1000)
 consistent <- TRUE  #c(FALSE, TRUE)
 boot_mi <- c("miboot", "bootmi", "weighted_bootmi")
@@ -88,7 +90,8 @@ run_one_scenario <- function(i, scenario_grid, global_seed) {
   )
   
   # set scenario-specific random seed
-  set.seed(global_seed + i, kind = "L'Ecuyer-CMRG")
+  # set.seed(global_seed + i, kind = "L'Ecuyer-CMRG")  # this potentially overwrites the RNG seed propagation
+                                                       # set by future
 
   md    <- sc$md
   n     <- sc$n
@@ -144,6 +147,7 @@ run_one_scenario <- function(i, scenario_grid, global_seed) {
       .tolerance = 1e-07,
       .resample_method = "bootstrap",
       .handle_inadmissibles = "replace",
+      # .handle_inadmissibles = "drop",
       .eval_plan = "sequential"
     )
 
@@ -209,7 +213,9 @@ run_one_scenario <- function(i, scenario_grid, global_seed) {
   invisible(TRUE)
 }
 
-# run_one_scenario(1, scenario_grid, global_seed)
+# run_one_scenario(1, scenario_grid, global_seed)  # miboot
+# run_one_scenario(5, scenario_grid, global_seed)  # bootmi
+# run_one_scenario(9, scenario_grid, global_seed)  # weighted_bootmi
 
 # parallel simulation of all scenarios
 Sys.setenv(
@@ -219,7 +225,8 @@ Sys.setenv(
 )
 
 plan(sequential)   # reset any existing plan
-nworkers <- 4      # it does not work with more then 4 cores :(
+# nworkers <- 4      # it does not work with more then 4 cores on my laptop :(
+nworkers <- max(1, parallelly::availableCores() - 2)
 plan(multisession, workers = nworkers)
 
 future_lapply(
