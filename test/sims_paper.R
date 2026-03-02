@@ -1,8 +1,13 @@
 library(plssemIMP)
-library(future)
-library(future.apply)
 
-options(future.globals.maxSize = 600 * 1024^2)  # 600 MB
+AWS <- FALSE
+
+if (AWS) {
+  library(future)
+  library(future.apply)
+
+  options(future.globals.maxSize = 600 * 1024^2)  # 600 MB
+}
 
 # function for logging the simulation in each scenario
 log_msg <- function(msg, log_file) {
@@ -11,8 +16,11 @@ log_msg <- function(msg, log_file) {
       file = log_file, append = TRUE)
 }
 
-# path_to_save <- "/Users/Sergio/Documents/Dati_VENTURINI/2_Research/1_Methods/PLS-SEM_missing/paper/results"
-path_to_save <- "/home/ubuntu/plssem_simulation/results"
+if (AWS) {
+  path_to_save <- "/home/ubuntu/plssem_simulation/results"
+} else {
+  path_to_save <- "/Users/Sergio/Documents/Dati_VENTURINI/2_Research/1_Methods/PLS-SEM_missing/paper/results"
+}
 
 nruns <- 500
 nimp <- 20
@@ -24,8 +32,11 @@ ngb <- c(5, 9, 13)
 global_seed <- 3110
 set.seed(global_seed, kind = "L'Ecuyer-CMRG")
 
-# source(file.path(path_to_save, "sims_models.R"))
-source(file.path("/home/ubuntu/plssem_simulation", "sims_models.R"))
+if (AWS) {
+  source(file.path("/home/ubuntu/plssem_simulation", "sims_models.R"))
+} else {
+  source(file.path(path_to_save, "sims_models.R"))
+}
 nsample <- c(200, 1000)  #c(200, 500, 1000)
 consistent <- TRUE  #c(FALSE, TRUE)
 boot_mi <- c("miboot", "bootmi", "weighted_bootmi")
@@ -148,7 +159,7 @@ run_one_scenario <- function(i, scenario_grid, global_seed) {
       .resample_method = "bootstrap",
       .handle_inadmissibles = "replace",
       # .handle_inadmissibles = "drop",
-      .eval_plan = "sequential"
+      .eval_plan = ifelse(AWS, "sequential", "multisession")
     )
 
     argsBOOT <- list(parallel = "no", ncpus = 1)
@@ -217,28 +228,40 @@ run_one_scenario <- function(i, scenario_grid, global_seed) {
 # run_one_scenario(5, scenario_grid, global_seed)  # bootmi
 # run_one_scenario(9, scenario_grid, global_seed)  # weighted_bootmi
 
-# parallel simulation of all scenarios
-Sys.setenv(
-  OMP_NUM_THREADS = "1",
-  OPENBLAS_NUM_THREADS = "1",
-  MKL_NUM_THREADS = "1"
-)
+if (AWS) {
+  # parallel simulation of all scenarios
+  Sys.setenv(
+    OMP_NUM_THREADS = "1",
+    OPENBLAS_NUM_THREADS = "1",
+    MKL_NUM_THREADS = "1"
+  )
 
-plan(sequential)   # reset any existing plan
-# nworkers <- 4      # it does not work with more then 4 cores on my laptop :(
-nworkers <- max(1, parallelly::availableCores() - 2)
-plan(multisession, workers = nworkers)
+  plan(sequential)   # reset any existing plan
+  nworkers <- max(1, parallelly::availableCores() - 2)
+  plan(multisession, workers = nworkers)
 
-future_lapply(
-  seq_len(nrow(scenario_grid)),
-  function(i) {
-    run_one_scenario(
-      i = i,
-      scenario_grid = scenario_grid,
-      global_seed = global_seed
-    )
-  },
-  future.seed = TRUE
-)
+  future_lapply(
+    seq_len(nrow(scenario_grid)),
+    function(i) {
+      run_one_scenario(
+        i = i,
+        scenario_grid = scenario_grid,
+        global_seed = global_seed
+      )
+    },
+    future.seed = TRUE
+  )
 
-plan(sequential)   # reset the existing plan
+  plan(sequential)   # reset the existing plan
+} else {
+  lapply(
+    seq_len(nrow(scenario_grid)),
+    function(i) {
+      run_one_scenario(
+        i = i,
+        scenario_grid = scenario_grid,
+        global_seed = global_seed
+      )
+    }
+  )
+}
