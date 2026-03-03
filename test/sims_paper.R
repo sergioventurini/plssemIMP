@@ -162,7 +162,7 @@ run_one_scenario <- function(i, scenario_grid, global_seed) {
       .eval_plan = ifelse(AWS, "sequential", "multisession")
     )
 
-    argsBOOT <- list(parallel = "no", ncpus = 1)
+    argsBOOT <- list(parallel = "yes", ncpus = parallel::detectCores() - 2)
 
     log_msg(
       paste0(
