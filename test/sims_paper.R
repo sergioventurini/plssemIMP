@@ -9,6 +9,9 @@ if (AWS) {
   options(future.globals.maxSize = 600 * 1024^2)  # 600 MB
 }
 
+runs_parallel <- ifelse(AWS, 4, 1)    # concurrent runs
+boot_cores    <- ifelse(AWS, 30, 9)   # cores per run for the bootstrap loop
+
 # function for logging the simulation in each scenario
 log_msg <- function(msg, log_file) {
   timestamp <- format(Sys.time(), "%Y-%m-%d %H:%M:%S")
@@ -80,7 +83,11 @@ mice_type <- "TAIL"
 mice_methods <- c("norm", "pmm")  #c("norm", "pmm", "rf")
 
 # single scenario simulation function
-run_one_scenario <- function(i, scenario_grid, global_seed) {
+# CHANGE: added runs_parallel and boot_cores parameters so that the two-level
+# parallelism budget defined at the top of this file is forwarded all the way
+# down to run_sims() and ultimately to the inner bootstrap mclapply calls.
+run_one_scenario <- function(i, scenario_grid, global_seed,
+                             runs_parallel, boot_cores) {  # <<< NEW parameters
   sc <- scenario_grid[i, ]
 
   # log the scenario
@@ -99,7 +106,7 @@ run_one_scenario <- function(i, scenario_grid, global_seed) {
     ),
     log_file
   )
-  
+
   # set scenario-specific random seed
   # set.seed(global_seed + i, kind = "L'Ecuyer-CMRG")  # this potentially overwrites the RNG seed propagation
                                                        # set by future
@@ -122,7 +129,7 @@ run_one_scenario <- function(i, scenario_grid, global_seed) {
     log_msg("Result file already exists — skipping scenario.", log_file)
     return(invisible(TRUE))
   }
-  
+
   tryCatch({
     argsCD <- list(
       method = "model",
@@ -148,10 +155,15 @@ run_one_scenario <- function(i, scenario_grid, global_seed) {
       pkg = "mice",
       methods = mice_methods,
       model = models_csem[[md]],
-      maxit = 10,
+      maxit = 3,
+      # maxit = 10,
       blocks = make_blocks(models_csem[[md]])
     )
 
+    # CHANGE: .eval_plan is now always "sequential" because run_sims() parallelises
+    # at the runs level (via mclapply) and each run's bootstrap loop also uses
+    # mclapply internally. Allowing cSEM to fork additional processes on top would
+    # create a third level of parallelism competing for the same cores.
     argscSEM <- list(
       .disattenuate = PLSc,
       .R = nboot,
@@ -159,16 +171,16 @@ run_one_scenario <- function(i, scenario_grid, global_seed) {
       .resample_method = "bootstrap",
       .handle_inadmissibles = "replace",
       # .handle_inadmissibles = "drop",
-      .eval_plan = ifelse(AWS, "sequential", "multisession")
+      .eval_plan = "sequential"    # <<< CHANGED: always sequential (mclapply handles parallelism)
     )
-
-    argsBOOT <- list(parallel = "yes", ncpus = parallel::detectCores() - 2)
 
     log_msg(
       paste0(
         "Starting estimation: nruns=", nruns,
         ", nboot=", nboot,
-        ", nimp=", nimp
+        ", nimp=", nimp,
+        ", runs_parallel=", runs_parallel,    # <<< NEW: log the parallelism config
+        ", boot_cores=", boot_cores           # <<< NEW
       ),
       log_file
     )
@@ -179,7 +191,6 @@ run_one_scenario <- function(i, scenario_grid, global_seed) {
       argsMM = argsMM,
       argsMI = argsMI,
       argscSEM = argscSEM,
-      argsBOOT = argsBOOT,
       verbose = FALSE,
       boot_mi = bs_mi,
       level = conflev,
@@ -192,7 +203,9 @@ run_one_scenario <- function(i, scenario_grid, global_seed) {
       datamisslist = NULL,
       store_data = FALSE,     # the data sets are NOT stored/saved
       runALL = TRUE,
-      log_file = log_file
+      log_file = log_file,
+      runs_parallel = runs_parallel,    # <<< NEW: forward two-level parallelism budget
+      boot_mc_cores = boot_cores        # <<< NEW
     )
 
     mod  <- paste0("m", md)
@@ -224,12 +237,17 @@ run_one_scenario <- function(i, scenario_grid, global_seed) {
   invisible(TRUE)
 }
 
-# run_one_scenario(1, scenario_grid, global_seed)  # miboot
-# run_one_scenario(5, scenario_grid, global_seed)  # bootmi
-# run_one_scenario(9, scenario_grid, global_seed)  # weighted_bootmi
+# run_one_scenario(1, scenario_grid, global_seed, runs_parallel, boot_cores)  # miboot
+# run_one_scenario(5, scenario_grid, global_seed, runs_parallel, boot_cores)  # bootmi
+# run_one_scenario(9, scenario_grid, global_seed, runs_parallel, boot_cores)  # weighted_bootmi
 
 if (AWS) {
-  # parallel simulation of all scenarios
+  # CHANGE: on AWS, scenario-level parallelism via future is kept, but cSEM's own
+  # parallelism and the runs-level mclapply each use their respective budgets.
+  # The three levels are: future (scenarios) -> mclapply (runs) -> mclapply (bootstrap).
+  # Total cores consumed per scenario worker = runs_parallel * boot_cores.
+  # nworkers below controls how many scenarios run concurrently; set it so that
+  # nworkers * runs_parallel * boot_cores <= total AWS cores.
   Sys.setenv(
     OMP_NUM_THREADS = "1",
     OPENBLAS_NUM_THREADS = "1",
@@ -237,16 +255,23 @@ if (AWS) {
   )
 
   plan(sequential)   # reset any existing plan
-  nworkers <- max(1, parallelly::availableCores() - 2)
-  plan(multisession, workers = nworkers)
+  # CHANGE: nworkers is now 1 because mclapply inside run_sims already uses all
+  # runs_parallel * boot_cores = 120 cores. Running multiple scenarios in parallel
+  # via future on top would over-subscribe the machine.
+  # To run multiple scenarios simultaneously, either increase the machine size or
+  # reduce runs_parallel and boot_cores proportionally.
+  nworkers <- 1L    # <<< CHANGED from parallelly::availableCores() - 2
+  plan(multicore, workers = nworkers)   ## WARNING: "multicore" works only on unix-based OS
 
   future_lapply(
     seq_len(nrow(scenario_grid)),
     function(i) {
       run_one_scenario(
-        i = i,
+        i             = i,
         scenario_grid = scenario_grid,
-        global_seed = global_seed
+        global_seed   = global_seed,
+        runs_parallel = runs_parallel,    # <<< NEW
+        boot_cores    = boot_cores        # <<< NEW
       )
     },
     future.seed = TRUE
@@ -258,9 +283,11 @@ if (AWS) {
     seq_len(nrow(scenario_grid)),
     function(i) {
       run_one_scenario(
-        i = i,
+        i             = i,
         scenario_grid = scenario_grid,
-        global_seed = global_seed
+        global_seed   = global_seed,
+        runs_parallel = runs_parallel,    # <<< NEW
+        boot_cores    = boot_cores        # <<< NEW
       )
     }
   )

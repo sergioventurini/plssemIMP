@@ -4,7 +4,6 @@ run_sims <- function(
   argsMM = list(prop = .5, mech = "MCAR", method = "ampute"),
   argsMI = list(m = 5, methods = c("pmm", "norm"), pkg = "mice"),
   argscSEM = list(),
-  argsBOOT = list(),
   boot_mi = "miboot",  # accepted values are 'miboot', 'bootmi', 'miboot_pooled', 'bootmi_pooled' and 'weighted_bootmi'
   wgtType = "rows",    # accepted values are 'rows' and 'all'
   verbose = FALSE,
@@ -16,8 +15,15 @@ run_sims <- function(
   datamisslist = NULL,
   store_data = FALSE,
   runALL = TRUE,
-  log_file = NULL) {
-
+  log_file = NULL,
+  runs_parallel = 1L,    # <<< NEW: number of concurrent simulation runs.
+                         # Must satisfy runs_parallel * boot_mc_cores <= total cores.
+                         # When > 1: verbose is forced FALSE and per-run logging is
+                         # disabled to avoid garbled output from concurrent processes.
+  boot_mc_cores = NULL)  # <<< NEW: cores per run for the inner bootstrap mclapply.
+                         # NULL = use all available cores minus one (standalone behaviour).
+                         # Typically set to floor(total_cores / runs_parallel).
+{
   CALL <- match.call()
   arg_names <- names(formals(sys.function()))
   args_list <- mget(arg_names, envir = environment(), inherits = FALSE)
@@ -59,13 +65,39 @@ run_sims <- function(
     suppressMessages(require("ImputeRobust", quietly = TRUE))
   }
 
-  res_all <- res <- run_seeds <- list()
-  for (run in 1:runs) {
-    run_seeds[[run]] <- .Random.seed
-    if (verbose) {
+  # CHANGE: resolve effective run-level parallelism
+  effective_runs_parallel <- max(1L, as.integer(runs_parallel))  # <<< NEW
+
+  # CHANGE: when runs are parallelised, cSEM's own .eval_plan must be "sequential"
+  # to prevent a third level of forked processes competing for the same cores.
+  # We override it here rather than requiring the caller to remember this rule.
+  if (effective_runs_parallel > 1L &&                               # <<< NEW
+      !is.null(argscSEM$.eval_plan) &&                             # <<< NEW
+      argscSEM$.eval_plan != "sequential") {                       # <<< NEW
+    argscSEM$.eval_plan <- "sequential"                            # <<< NEW
+    message("run_sims: runs_parallel > 1, forcing argscSEM$.eval_plan = 'sequential'.")
+  }                                                                 # <<< NEW
+
+  # CHANGE: define the body of a single simulation run as a self-contained function.
+  # This is the function that mclapply will call for each run index.
+  # Returning a named list allows us to recover both the results and the RNG seed
+  # used by each worker (for reproducibility diagnostics).
+  run_one <- function(run) {                                        # <<< NEW FUNCTION
+
+    # Capture the RNG state at the start of this worker. With mc.set.seed = TRUE,
+    # each forked worker inherits a distinct L'Ecuyer-CMRG stream, so these seeds
+    # will differ across runs even when runs_parallel > 1.
+    run_seed_captured <- .Random.seed
+
+    # Suppress verbose output and per-run logging when running in parallel:
+    # multiple processes writing to the same stream simultaneously produces garbled output.
+    run_verbose  <- if (effective_runs_parallel > 1L) FALSE else verbose
+    run_log_file <- if (effective_runs_parallel > 1L) NULL  else log_file
+
+    if (run_verbose) {
       cat(paste0("Simulation run ", run, " of ", runs, "\n"))
     }
-    log_msg(paste0("Simulation run ", run, " of ", runs), log_file)
+    log_msg(paste0("Simulation run ", run, " of ", runs), run_log_file)
 
     #################################
     ## STEP 1: generate complete data
@@ -79,7 +111,7 @@ run_sims <- function(
         stop("the data sets provided must be complete.")
     }
     dat_orig <- dat
-    
+
     ################################
     ## STEP 2: generate missing data
     ################################
@@ -91,7 +123,9 @@ run_sims <- function(
     else {
       dat <- datamisslist[[run]]
     }
-    
+
+    res <- list()
+
     ##################################################
     ## STEP 3: perform multiple imputation & bootstrap
     ##################################################
@@ -102,13 +136,13 @@ run_sims <- function(
                             model = modelMI,
                             argsMI = miArgs,
                             argscSEM = argscSEM,
-                            argsBOOT = argsBOOT,
                             boot_mi = boot_mi,
                             wgtType = wgtType,
-                            verbose = verbose,
+                            verbose = run_verbose,
                             seed = NULL,
                             level = level,
-                            log_file = log_file)
+                            log_file = run_log_file,
+                            boot_mc_cores = boot_mc_cores)    # <<< NEW: forwarded
         res[[methMI]] <- res_mi$res
       }
 
@@ -120,12 +154,12 @@ run_sims <- function(
 
       # mean imputation
       if (meanimp) {
-        if (verbose) {
+        if (run_verbose) {
           cat("  - single imputation method: mean\n")
         }
-        log_msg("  - single imputation method: mean", log_file)
+        log_msg("  - single imputation method: mean", run_log_file)
         res[["mean"]] <- meanimp(model = modelMI, data = dat,
-                                 csemArgs = argscSEM, verbose = verbose,
+                                 csemArgs = argscSEM, verbose = run_verbose,
                                  level = level)
       }
 
@@ -144,38 +178,38 @@ run_sims <- function(
         }
         argsKNN$k <- floor(argsKNN$k)
         for (j in 1:length(argsKNN$k)) {
-          if (verbose) {
+          if (run_verbose) {
             cat(paste0("  - single imputation method: k-nearest neighbors (k = ", argsKNN$k[j], ")\n"))
           }
-          log_msg(paste0("  - single imputation method: k-nearest neighbors (k = ", argsKNN$k[j], ")"), log_file)
+          log_msg(paste0("  - single imputation method: k-nearest neighbors (k = ", argsKNN$k[j], ")"), run_log_file)
           res[[paste0("knn", argsKNN$k[j])]] <- knnimp(model = modelMI, data = dat,
                                                        csemArgs = argscSEM,
                                                        k = argsKNN$k[j],
                                                        method = argsKNN$method[1],
-                                                       verbose = verbose,
+                                                       verbose = run_verbose,
                                                        level = level)
         }
       }
 
       # perform complete-case (i.e. listwise deletion) analysis
       if (listwise) {
-        if (verbose) {
+        if (run_verbose) {
           cat("  - complete-case (listwise deletion) analysis\n")
         }
-        log_msg("  - complete-case (listwise deletion) analysis", log_file)
+        log_msg("  - complete-case (listwise deletion) analysis", run_log_file)
         res[["listwise"]] <- fulldata(model = modelMI, data = na.omit(dat),
-                                      csemArgs = argscSEM, verbose = verbose,
+                                      csemArgs = argscSEM, verbose = run_verbose,
                                       level = level)
       }
 
       # perform analysis on original full data (i.e. before generating NAs)
       if (fulloriginal) {
-        if (verbose){
+        if (run_verbose){
           cat("  - analysis on the original full data (i.e. before generating NAs)\n")
         }
-        log_msg("  - analysis on the original full data (i.e. before generating NAs)", log_file)
+        log_msg("  - analysis on the original full data (i.e. before generating NAs)", run_log_file)
         res[["fulloriginal"]] <- fulldata(model = modelMI, data = dat_orig,
-                                          csemArgs = argscSEM, verbose = verbose,
+                                          csemArgs = argscSEM, verbose = run_verbose,
                                           level = level)
       }
 
@@ -192,14 +226,36 @@ run_sims <- function(
       res$dat_miss <- dat
     }
 
-    res_all[[run]] <- res
-  }
+    # Return both the results and the captured seed for reproducibility diagnostics
+    list(res = res, seed = run_seed_captured)                      # <<< NEW
+  }  # end run_one                                                  # <<< NEW
+
+  # CHANGE: dispatch runs either sequentially (runs_parallel = 1) or in parallel.
+  # mclapply with mc.set.seed = TRUE propagates distinct L'Ecuyer-CMRG substreams
+  # to each forked worker, ensuring reproducible and independent RNG per run.
+  # WARNING: mclapply (fork-based) only works on Unix/macOS; on Windows it silently
+  # falls back to sequential. Use the runs_parallel = 1 path on Windows.
+  if (effective_runs_parallel == 1L) {                             # <<< NEW
+    run_results <- lapply(1:runs, run_one)                         # <<< NEW (no fork overhead)
+  } else {                                                         # <<< NEW
+    run_results <- parallel::mclapply(                             # <<< NEW
+      1:runs,                                                      # <<< NEW
+      run_one,                                                     # <<< NEW
+      mc.cores    = effective_runs_parallel,                       # <<< NEW
+      mc.preschedule = FALSE,                                      # <<< NEW
+      mc.set.seed = TRUE                                           # <<< NEW
+    )                                                              # <<< NEW
+  }                                                                # <<< NEW
+
+  # CHANGE: reassemble res_all and run_seeds from the list returned by mclapply
+  res_all   <- lapply(run_results, `[[`, "res")                    # <<< NEW
+  run_seeds <- lapply(run_results, `[[`, "seed")                   # <<< NEW
 
   names(res_all) <- paste0("run_", 1:runs)
   res_all$start_seed <- start_seed
-  res_all$run_seeds <- run_seeds
-  res_all$call <- CALL
-  res_all$args <- args_list
+  res_all$run_seeds  <- run_seeds
+  res_all$call       <- CALL
+  res_all$args       <- args_list
 
   res_all
 }

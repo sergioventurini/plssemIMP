@@ -3,13 +3,16 @@ plssemIMP <- function(
   model,
   argsMI = list(m = 5, method = "pmm", pkg = "mice"),
   argscSEM = list(),
-  argsBOOT = list(),
   boot_mi = "miboot",  # accepted values are 'miboot', 'bootmi', 'miboot_pooled', 'bootmi_pooled' and 'weighted_bootmi'
   wgtType = "rows",    # accepted values are 'rows' and 'all'
   verbose = FALSE,
   seed = NULL,
   level = 0.95,
-  log_file = NULL)
+  log_file = NULL,
+  boot_mc_cores = NULL)   # <<< NEW PARAMETER: cores for the inner bootstrap mclapply;
+                          # NULL = use all available cores (standalone behaviour).
+                          # Set to a fixed value when run_sims() parallelises at the
+                          # runs level so that runs_parallel * boot_mc_cores <= total cores.
 {
   CALL <- match.call()
   arg_names <- names(formals(sys.function()))
@@ -72,19 +75,23 @@ plssemIMP <- function(
       argscSEM$.resample_method <- "bootstrap"
       if (verbose) warning("the .resample_method option has been set to 'bootstrap'.")
     }
+    # CHANGE: forward boot_mc_cores so plssemMIBOOT can parallelise over m datasets
     res <- plssemMIBOOT(model = model, data = data, m = mMI,
                         miArgs = miArgs, miPackage = pkgMI, csemArgs = argscSEM,
-                        verbose = verbose, seed = seed, level = level)
+                        verbose = verbose, seed = seed, level = level,
+                        boot_mc_cores = boot_mc_cores)    # <<< NEW
   }
   else if (boot_mi == "bootmi") {
     if (!is.null(argscSEM$.resample_method) && argscSEM$.resample_method != "none") {
       argscSEM$.resample_method <- "none"
       if (verbose) warning("the .resample_method option has been set to 'none'.")
     }
+    # CHANGE: forward boot_mc_cores to restrict inner bootstrap parallelism
     res <- plssemBOOTMI(model = model, data = data, m = mMI,
                         miArgs = miArgs, miPackage = pkgMI,
-                        csemArgs = argscSEM, bootArgs = argsBOOT,
-                        verbose = verbose, seed = seed, level = level)
+                        csemArgs = argscSEM,
+                        verbose = verbose, seed = seed, level = level,
+                        boot_mc_cores = boot_mc_cores)    # <<< NEW
   }
   else if (boot_mi == "miboot_pooled") {
     if (is.null(argscSEM$.resample_method)) {
@@ -95,31 +102,37 @@ plssemIMP <- function(
       argscSEM$.resample_method <- "bootstrap"
       if (verbose) warning("the .resample_method option has been set to 'bootstrap'.")
     }
+    # CHANGE: forward boot_mc_cores so plssemMIBOOT_PS can parallelise over m datasets
     res <- plssemMIBOOT_PS(model = model, data = data, m = mMI,
                            miArgs = miArgs, miPackage = pkgMI,
                            csemArgs = argscSEM, verbose = verbose,
-                           seed = seed, level = level)
+                           seed = seed, level = level,
+                           boot_mc_cores = boot_mc_cores)    # <<< NEW
   }
   else if (boot_mi == "bootmi_pooled") {
     if (!is.null(argscSEM$.resample_method) && argscSEM$.resample_method != "none") {
       argscSEM$.resample_method <- "none"
       if (verbose) warning("the .resample_method option has been set to 'none'.")
     }
+    # CHANGE: forward boot_mc_cores
     res <- plssemBOOTMI_PS(model = model, data = data, m = mMI,
                            miArgs = miArgs, miPackage = pkgMI,
-                           csemArgs = argscSEM, bootArgs = argsBOOT,
-                           verbose = verbose, seed = seed, level = level)
+                           csemArgs = argscSEM,
+                           verbose = verbose, seed = seed, level = level,
+                           boot_mc_cores = boot_mc_cores)    # <<< NEW
   }
   else if (boot_mi == "weighted_bootmi") {
     if (!is.null(argscSEM$.resample_method) && argscSEM$.resample_method != "none") {
       argscSEM$.resample_method <- "none"
       if (verbose) warning("the .resample_method option has been set to 'none'.")
     }
+    # CHANGE: forward boot_mc_cores
     res <- plssemWGT_BOOTMI(model = model, data = data, m = mMI,
                             miArgs = miArgs, miPackage = pkgMI,
-                            csemArgs = argscSEM, bootArgs = argsBOOT,
+                            csemArgs = argscSEM,
                             verbose = verbose, seed = seed, level = level,
-                            wgtType = wgtType)
+                            wgtType = wgtType,
+                            boot_mc_cores = boot_mc_cores)    # <<< NEW
   }
   else {
     stop("the specified bootstrap/MI method is not available.")
