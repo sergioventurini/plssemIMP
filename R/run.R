@@ -247,6 +247,19 @@ run_sims <- function(
     )                                                              # <<< NEW
   }                                                                # <<< NEW
 
+###
+# surface the real child error before the reassembly crash masks it
+failed <- sapply(run_results, inherits, "try-error")
+if (any(failed)) {
+  failed_idx  <- which(failed)
+  real_errors <- sapply(run_results[failed], as.character)
+  stop(sprintf(
+    "mclapply: %d run(s) failed. First failure was run %d.\nReal error:\n%s",
+    sum(failed), failed_idx[1], real_errors[1]
+  ))
+}
+###
+
   # CHANGE: reassemble res_all and run_seeds from the list returned by mclapply
   res_all   <- lapply(run_results, `[[`, "res")                    # <<< NEW
   run_seeds <- lapply(run_results, `[[`, "seed")                   # <<< NEW

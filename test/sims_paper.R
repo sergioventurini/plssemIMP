@@ -1,6 +1,14 @@
 library(plssemIMP)
 
+Sys.setenv(
+  OMP_NUM_THREADS = "1",
+  OPENBLAS_NUM_THREADS = "1",
+  MKL_NUM_THREADS = "1",
+  VECLIB_MAXIMUM_THREADS = "1"
+)
+
 AWS <- FALSE
+UiT <- TRUE
 
 if (AWS) {
   library(future)
@@ -9,8 +17,16 @@ if (AWS) {
   options(future.globals.maxSize = 600 * 1024^2)  # 600 MB
 }
 
-runs_parallel <- ifelse(AWS, 4, 1)    # concurrent runs
-boot_cores    <- ifelse(AWS, 30, 9)   # cores per run for the bootstrap loop
+if (AWS) {
+  runs_parallel <- 4     # concurrent runs
+  boot_cores    <- 30    # cores per run for the bootstrap loops
+} else if (UiT) {
+  runs_parallel <- 3     # concurrent runs
+  boot_cores    <- 28    # cores per run for the bootstrap loops
+} else {
+  runs_parallel <- 1     # concurrent runs
+  boot_cores    <- 9     # cores per run for the bootstrap loops
+}
 
 # function for logging the simulation in each scenario
 log_msg <- function(msg, log_file) {
@@ -21,6 +37,8 @@ log_msg <- function(msg, log_file) {
 
 if (AWS) {
   path_to_save <- "/home/ubuntu/plssem_simulation/results"
+} else if (UiT) {
+  path_to_save <- "/home/sergio/plssem_simulation/results"
 } else {
   path_to_save <- "/Users/Sergio/Documents/Dati_VENTURINI/2_Research/1_Methods/PLS-SEM_missing/paper/results"
 }
@@ -35,13 +53,9 @@ ngb <- c(5, 9, 13)
 global_seed <- 3110
 set.seed(global_seed, kind = "L'Ecuyer-CMRG")
 
-if (AWS) {
-  source(file.path("/home/ubuntu/plssem_simulation", "sims_models.R"))
-} else {
-  source(file.path(path_to_save, "sims_models.R"))
-}
+source(file.path(path_to_save, "sims_models.R"))
 nsample <- c(200, 1000)  #c(200, 500, 1000)
-consistent <- TRUE  #c(FALSE, TRUE)
+consistent <- TRUE #c(FALSE, TRUE)
 boot_mi <- c("miboot", "bootmi", "weighted_bootmi")
 miss_mech <- c("MCAR", "MAR")
 miss_prop <- c(0.1, 0.8)  #c(0.1, 0.3, 0.8)  # prop of incomplete cases (not overall prop of missings)
@@ -85,7 +99,7 @@ mice_methods <- c("norm", "pmm")  #c("norm", "pmm", "rf")
 # single scenario simulation function
 # CHANGE: added runs_parallel and boot_cores parameters so that the two-level
 # parallelism budget defined at the top of this file is forwarded all the way
-# down to run_sims() and ultimately to the inner bootstrap mclapply calls.
+# down to run_sims() and ultimately to the inner bootstrap mclapply() calls.
 run_one_scenario <- function(i, scenario_grid, global_seed,
                              runs_parallel, boot_cores) {  # <<< NEW parameters
   sc <- scenario_grid[i, ]
@@ -248,11 +262,6 @@ if (AWS) {
   # Total cores consumed per scenario worker = runs_parallel * boot_cores.
   # nworkers below controls how many scenarios run concurrently; set it so that
   # nworkers * runs_parallel * boot_cores <= total AWS cores.
-  Sys.setenv(
-    OMP_NUM_THREADS = "1",
-    OPENBLAS_NUM_THREADS = "1",
-    MKL_NUM_THREADS = "1"
-  )
 
   plan(sequential)   # reset any existing plan
   # CHANGE: nworkers is now 1 because mclapply inside run_sims already uses all
