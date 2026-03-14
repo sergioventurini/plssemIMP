@@ -21,8 +21,8 @@ if (AWS) {
   runs_parallel <- 4     # concurrent runs
   boot_cores    <- 30    # cores per run for the bootstrap loops
 } else if (UiT) {
-  runs_parallel <- 3     # concurrent runs
-  boot_cores    <- 28    # cores per run for the bootstrap loops
+  runs_parallel <- 86    # concurrent runs
+  boot_cores    <- 1     # cores per run for the bootstrap loops
 } else {
   runs_parallel <- 1     # concurrent runs
   boot_cores    <- 9     # cores per run for the bootstrap loops
@@ -30,6 +30,7 @@ if (AWS) {
 
 # function for logging the simulation in each scenario
 log_msg <- function(msg, log_file) {
+  if (is.null(log_file) || identical(log_file, "")) return(invisible(NULL))
   timestamp <- format(Sys.time(), "%Y-%m-%d %H:%M:%S")
   cat(sprintf("[%s] %s\n", timestamp, msg),
       file = log_file, append = TRUE)
