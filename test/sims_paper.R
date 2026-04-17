@@ -8,7 +8,7 @@ Sys.setenv(
 )
 
 AWS <- FALSE
-UiT <- TRUE
+UiT <- FALSE
 
 if (AWS) {
   library(future)
@@ -21,8 +21,8 @@ if (AWS) {
   runs_parallel <- 4     # concurrent runs
   boot_cores    <- 30    # cores per run for the bootstrap loops
 } else if (UiT) {
-  runs_parallel <- 86    # concurrent runs
-  boot_cores    <- 1     # cores per run for the bootstrap loops
+  runs_parallel <- 1     # concurrent runs
+  boot_cores    <- 86    # cores per run for the bootstrap loops
 } else {
   runs_parallel <- 1     # concurrent runs
   boot_cores    <- 9     # cores per run for the bootstrap loops
